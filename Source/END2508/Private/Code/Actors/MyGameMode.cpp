@@ -110,6 +110,21 @@ void AMyGameMode::HandleSpawnerDestroyed(AActor* DestroyedSpawner)
 
 void AMyGameMode::CheckWinCondition()
 {
+    ABasePlayer* Player = Cast<ABasePlayer>(UGameplayStatics::GetPlayerPawn(this, 0));
+
+    if (!Player)
+    {
+        UE_LOG(LogTemp, Error, TEXT("CheckWinCondition failed: Player is null"));
+        return;
+    }
+
+    if (Player->QuestStep < 8)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Win blocked: QuestStep=%d, Enemies=%d, Spawners=%d"),
+            Player->QuestStep, NumberOfEnemies, NumberOfSpawners);
+        return;
+    }
+
     if (NumberOfEnemies <= 0 && NumberOfSpawners <= 0)
     {
         UE_LOG(LogTemp, Warning, TEXT("YOU WIN!"));

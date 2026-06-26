@@ -150,6 +150,15 @@ void ABasePlayer::BeginPlay()
         {
             Axe->InitializeAxe(this);
 
+            if (!GetMesh()->DoesSocketExist(AxeAttachSocket))
+            {
+                UE_LOG(LogTemp, Error, TEXT("Missing axe socket: %s"), *AxeAttachSocket.ToString());
+            }
+            else
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Axe socket found: %s"), *AxeAttachSocket.ToString());
+            }
+
             Axe->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, AxeAttachSocket);
             Axe->SetActorRelativeLocation(FVector::ZeroVector);
             Axe->SetActorRelativeRotation(FRotator::ZeroRotator);
@@ -980,8 +989,6 @@ void ABasePlayer::OnInteract()
     const FVector Center = Start + GetActorForwardVector() * 150.f;
     const float Radius = 120.f;
 
-    DrawDebugSphere(GetWorld(), Center, Radius, 16, FColor::Green, false, 2.0f);
-
     TArray<FOverlapResult> Overlaps;
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
@@ -1192,8 +1199,41 @@ void ABasePlayer::EquipHotbarSlot(int32 Index)
     const bool bPickaxe = (EquipState == EEquipState::PickAxe);
     const bool bFlashlight = (EquipState == EEquipState::Flashlight);
 
-    if (Axe)      Axe->SetActorHiddenInGame(!bAxe);
-    if (Pickaxe)  Pickaxe->SetActorHiddenInGame(!bPickaxe);
+    if (Axe)
+    {
+        Axe->SetActorHiddenInGame(!bAxe);
+
+        if (bAxe && GetMesh())
+        {
+            Axe->AttachToComponent(
+                GetMesh(),
+                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                AxeAttachSocket
+            );
+
+            Axe->SetActorRelativeLocation(FVector::ZeroVector);
+            Axe->SetActorRelativeRotation(FRotator::ZeroRotator);
+            Axe->SetActorEnableCollision(false);
+        }
+    }
+
+    if (Pickaxe)
+    {
+        Pickaxe->SetActorHiddenInGame(!bPickaxe);
+
+        if (bPickaxe && GetMesh())
+        {
+            Pickaxe->AttachToComponent(
+                GetMesh(),
+                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                AxeAttachSocket
+            );
+
+            Pickaxe->SetActorRelativeLocation(FVector::ZeroVector);
+            Pickaxe->SetActorRelativeRotation(FRotator::ZeroRotator);
+            Pickaxe->SetActorEnableCollision(false);
+        }
+    }
 
     if (WeaponChild)
     {
@@ -1251,39 +1291,39 @@ void ABasePlayer::UpdateQuestText()
     switch (QuestStep)
     {
     case 0:
-        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Find the Axe")));
+        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Find the Axe.")));
         break;
 
     case 1:
-        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Use the Axe on Trees for Wood")));
+        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Use the Axe on Trees for Wood.")));
         break;
 
     case 2:
-        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Find the Pickaxe")));
+        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Find the Pickaxe.")));
         break;
 
     case 3:
-        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Use the Pickaxe on Stone")));
+        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Use the Pickaxe on Stone.")));
         break;
 
     case 4:
-        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Use resources to build a shelter for protection")));
+        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Use resources to build a shelter for protection.")));
         break;
 
     case 5:
-        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Find abandon shelter at the edge of woods")));
+        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Find abandon shelter at the edge of the woods.")));
         break;
 
     case 6:
-        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Search for Gun")));
+        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Search for Gun.")));
         break;
 
     case 7:
-        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Search for Ammo")));
+        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Search for Ammo.")));
         break;
 
     case 8:
-        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Survive, kill all zombies and spawners to win!")));
+        HUDWidget->SetObjectiveText(FText::FromString(TEXT("Survive the final wave: destroy all zombie spawners and kill all remaining zombies.")));
         break;
 
     default:

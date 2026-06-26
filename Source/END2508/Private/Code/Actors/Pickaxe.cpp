@@ -37,11 +37,6 @@ bool APickaxe::Attack()
 		Params
 	);
 
-#if WITH_EDITOR
-	DrawDebugLine(GetWorld(), Start, End, FColor::Cyan, false, 1.0f, 0, 1.5f);
-	DrawDebugSphere(GetWorld(), bHit ? Hit.ImpactPoint : End, Radius, 12, bHit ? FColor::Blue : FColor::Cyan, false, 1.0f);
-#endif
-
 	if (!bHit || !Hit.GetActor())
 	{
 		return false;
