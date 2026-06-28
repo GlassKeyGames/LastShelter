@@ -241,13 +241,6 @@ void AAgent::DestroySelfAfterDeath()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Agent DestroySelfAfterDeath called: %s"), *GetName());
 
-	//this enemy has been destroyed
-	if (AMyGameMode* GM = Cast<AMyGameMode>(UGameplayStatics::GetGameMode(this)))
-	{
-		GM->HandleEnemyDestroyed(this);  //track enemy deaths
-		UE_LOG(LogTemp, Warning, TEXT("Notified GameMode of agent death"));
-	}
-
 	Destroy();
 }
 

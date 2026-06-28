@@ -4,6 +4,9 @@
 #include "Code/Actors/MyGameMode.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Code/Widgets/Results.h"
 #include "Code/Actors/BarrelSpawner.h"
 #include "Code/Actors/BasePlayer.h" 
@@ -73,9 +76,30 @@ void AMyGameMode::HandleEnemyDestroyed(AActor* DestroyedActor)
     CheckWinCondition();
 }
 
+void AMyGameMode::RegisterSpawnedEnemy(AActor* SpawnedEnemy)
+{
+    if(!SpawnedEnemy)
+    {
+        return;
+    }
+
+    NumberOfEnemies++;
+
+    SpawnedEnemy->OnDestroyed.AddUniqueDynamic(this, &AMyGameMode::HandleEnemyDestroyed);
+
+    UE_LOG(LogTemp, Warning, TEXT("Spawned enemy registered. Enemies: %d | Spawners: %d"),
+        NumberOfEnemies, NumberOfSpawners);
+
+}
+
 void AMyGameMode::RemovePlayer()
 {
     UE_LOG(LogTemp, Warning, TEXT("You Lose!"));
+
+    if (LoseSound)
+    {
+        UGameplayStatics::PlaySound2D(this, LoseSound);
+    }
 
     if (!ResultsWidgetObject)
     {
@@ -129,6 +153,11 @@ void AMyGameMode::CheckWinCondition()
     {
         UE_LOG(LogTemp, Warning, TEXT("YOU WIN!"));
 
+        if (WinSound)
+        {
+            UGameplayStatics::PlaySound2D(this, WinSound);
+        }
+
         if (!ResultsWidgetObject)
         {
             UE_LOG(LogTemp, Error, TEXT("ResultsWidgetObject is null in CheckWinCondition"));
@@ -140,7 +169,20 @@ void AMyGameMode::CheckWinCondition()
 
         if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
         {
-            PC->SetInputMode(FInputModeUIOnly());
+            if (APawn* PlayerPawn = PC->GetPawn())
+            {
+                PlayerPawn->DisableInput(PC);
+
+                if (ACharacter* PlayerCharacter = Cast<ACharacter>(PlayerPawn))
+                {
+                    PlayerCharacter->GetCharacterMovement()->StopMovementImmediately();
+                    PlayerCharacter->GetCharacterMovement()->DisableMovement();
+                }
+            }
+
+            FInputModeUIOnly InputMode;
+            InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+            PC->SetInputMode(InputMode);
             PC->bShowMouseCursor = true;
         }
     }

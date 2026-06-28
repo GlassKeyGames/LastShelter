@@ -555,8 +555,20 @@ void UBuildComponent::BuildCycle()
 					Loc.Z = FrameBottomZ + InsertB.BoxExtent.Z +
 						(bPlacingDoor ? DoorInsertZOffset : WindowInsertZOffset);
 
+					const FRotator FrameRot = FrameSM->GetComponentRotation();
+
+					if (bPlacingDoor)
+					{
+						// Move the DOOR ACTOR ROOT / HINGE to the left side of the door frame.
+						// This is the important part. The root is the hinge.
+						const FVector FrameRight = FrameRot.RotateVector(FVector::RightVector);
+
+						// Move left from the center of the frame.
+						Loc -= FrameRight * FrameB.BoxExtent.Y;
+					}
+
 					BuildTransform.SetLocation(Loc);
-					BuildTransform.SetRotation(FrameSM->GetComponentRotation().Quaternion());
+					BuildTransform.SetRotation(FrameRot.Quaternion());
 
 					CanPlace = true;
 					DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);

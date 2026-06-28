@@ -9,14 +9,14 @@
 class UStaticMeshComponent;
 class USceneComponent;
 class USoundBase;
+class UStaticMesh;
 
 UCLASS()
 class END2508_API ADoor : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
-	// Sets default values for this actor's properties
+
+public:
 	ADoor();
 
 protected:
@@ -28,30 +28,36 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Door")
 	UStaticMeshComponent* DoorMesh;
 
-	FRotator ClosedRotation;
-	FRotator OpenRotation;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Door")
 	bool bIsOpen = false;
 
+	FRotator ClosedRotation;
+	FRotator OpenRotation;
+
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door")
-	float OpenYawOffset = 90.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door")
-	FVector HingeOffset = FVector::ZeroVector;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door")
 	FRotator ClosedRotationOffset = FRotator::ZeroRotator;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door")
 	FRotator OpenRotationOffset = FRotator(0.f, 90.f, 0.f);
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door|Offsets")
+	FVector DoorBaseRelativeLocation = FVector(0.f, 55.f, 0.f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door|Offsets")
+	FVector ClosedOnlyRelativeLocationOffset = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door|Offsets")
+	FVector OpenDoorRelativeLocationOffset = FVector::ZeroVector;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door|Sound")
 	USoundBase* OpenDoorSound = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door|Sound")
 	USoundBase* CloseDoorSound = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door")
+	UStaticMesh* DoorAsset = nullptr;
 
 	UFUNCTION(BlueprintCallable, Category = "Door")
 	void ToggleDoor();
@@ -60,9 +66,4 @@ public:
 	bool IsOpen() const { return bIsOpen; }
 
 	UStaticMeshComponent* GetDoorMesh() const { return DoorMesh; }
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door")
-	UStaticMesh* DoorAsset = nullptr;
-
 };
- 

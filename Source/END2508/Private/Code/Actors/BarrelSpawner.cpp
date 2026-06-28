@@ -58,9 +58,16 @@ void ABarrelSpawner::SpawnAgent()
 	FRotator SpawnRot = GetActorRotation();
 
 	APawn* NewAgent = GetWorld()->SpawnActor<APawn>(AgentToSpawn, SpawnLoc, SpawnRot, Params);
+
 	if (NewAgent)
 	{
 		NewAgent->SpawnDefaultController();
+
+		if (AMyGameMode* GM = Cast<AMyGameMode>(UGameplayStatics::GetGameMode(this)))
+		{
+			GM->RegisterSpawnedEnemy(NewAgent);
+		}
+
 		UE_LOG(LogTemp, Warning, TEXT("BarrelSpawner spawned: %s"), *NewAgent->GetName());
 	}
 }
@@ -90,11 +97,6 @@ void ABarrelSpawner::HandleDestroyed()
 	GetWorldTimerManager().ClearTimer(SpawnTimer);
 
 	UE_LOG(LogTemp, Warning, TEXT("BarrelSpawner destroyed."));
-
-	if (AMyGameMode* GM = Cast<AMyGameMode>(UGameplayStatics::GetGameMode(this)))
-	{
-		GM->HandleSpawnerDestroyed(this);
-	}
 
 	Destroy();
 }

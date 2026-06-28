@@ -19,8 +19,8 @@ bool APickaxe::Attack()
 	AActor* OwningActor = GetOwner();
 	if (!OwningActor) return false;
 
-	const FVector Start = OwningActor->GetActorLocation() + FVector(0.f, 0.f, 30.f);
-	const FVector End = Start + OwningActor->GetActorForwardVector() * Range;
+	const FVector Start = OwningActor->GetActorLocation() + FVector(0.f, 0.f, 25.f);
+	const FVector End = Start + (OwningActor->GetActorForwardVector() * Range) + FVector(0.f, 0.f, -45.f);
 
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(PickaxeAttack), false);
 	Params.AddIgnoredActor(OwningActor);

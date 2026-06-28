@@ -115,7 +115,12 @@ bool ARifle::Attack()
 
         if (GetWorld()->LineTraceSingleByChannel(Hit, CamLoc, TargetPoint, ECC_Visibility, Params))
         {
-            TargetPoint = Hit.ImpactPoint;
+            const float DistanceFromMuzzle = FVector::Dist(MuzzleLoc, Hit.ImpactPoint);
+
+            if (DistanceFromMuzzle > 300.f)
+            {
+                TargetPoint = Hit.ImpactPoint;
+            }
         }
     }
     else if (AAIController* AICon = Cast<AAIController>(Controller))
@@ -135,21 +140,34 @@ bool ARifle::Attack()
     }
 
     FVector FireDir = (TargetPoint - MuzzleLoc).GetSafeNormal();
+
+    if (APlayerController* PC = Cast<APlayerController>(Controller))
+    {
+        FVector CamLoc;
+        FRotator CamRot;
+        PC->GetPlayerViewPoint(CamLoc, CamRot);
+
+        const FVector CameraForward = CamRot.Vector();
+
+        // If the aim direction points backward compared to the camera,
+        // force the bullet to shoot forward from the camera direction.
+        if (FVector::DotProduct(FireDir, CameraForward) < 0.25f)
+        {
+            FireDir = CameraForward;
+        }
+    }
+
     FRotator FireRot = FireDir.Rotation();
 
-    if (ParentPawn)
-    {
-        FRotator NewRot = ParentPawn->GetActorRotation();
-        NewRot.Yaw = FireRot.Yaw;
-        ParentPawn->SetActorRotation(NewRot);
-    }
 
     FActorSpawnParameters SpawnParams;
     SpawnParams.Owner = ParentPawn;
     SpawnParams.Instigator = ParentPawn;
     SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    GetWorld()->SpawnActor<AActor>(ProjectileClass, MuzzleLoc, FireRot, SpawnParams);
+    const FVector SpawnLoc = MuzzleLoc + (FireDir * 150.f);
+
+    GetWorld()->SpawnActor<AActor>(ProjectileClass, SpawnLoc, FireRot, SpawnParams);
 
     if (FireSound)
     {

@@ -4,7 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "Code/Widgets/Results.h"    
+#include "Code/Widgets/Results.h" 
+#include "Sound/SoundBase.h"
 #include "MyGameMode.generated.h"
 
 class UUserWidget;
@@ -21,10 +22,19 @@ public:
     void HandleEnemyDestroyed(AActor* DestroyedActor);
 
     UFUNCTION()
+    void RegisterSpawnedEnemy(AActor* SpawnedEnemy);
+
+    UFUNCTION()
     void RemovePlayer();
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
     TSubclassOf<UUserWidget> ResultsWidgetClass;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio")
+    USoundBase* WinSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Audio")
+    USoundBase* LoseSound;
 
     UPROPERTY()
     UResults* ResultsWidgetObject;  
