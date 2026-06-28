@@ -209,8 +209,6 @@ void ARifle::ResetAction()
 			Interface->HandleActionFinished();
 		}
 	}
-
-	UE_LOG(LogTemp, Warning, TEXT("Rifle action complete, ready to fire again."));
 }
 
 void ARifle::ReloadAmmo()
@@ -245,7 +243,6 @@ bool ARifle::UseAmmo()
         return true;
     }
 
-    UE_LOG(LogTemp, Warning, TEXT(" No ammo!"));
     return false;
 }
 
@@ -266,7 +263,6 @@ void ARifle::CompleteReload()
     {
         OnAmmoChanged.Broadcast(CurrentAmmo, MaxAmmo);
     }
-    UE_LOG(LogTemp, Warning, TEXT(" Reload complete: %f / %f"), CurrentAmmo, MaxAmmo);
 }
 
 void ARifle::SetMaxAmmo(float NewMax)

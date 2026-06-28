@@ -37,8 +37,6 @@ void UHealthComponent::TakeDamage(float DamageAmount)
 
     if (CurrentHealth <= 0.f)
     {
-        // Dead
-        UE_LOG(LogTemp, Warning, TEXT("died!"), *GetOwner()->GetName());
 
         if (OwningCharacter)
         {
@@ -50,8 +48,6 @@ void UHealthComponent::TakeDamage(float DamageAmount)
     {
         // Alive and hurt
         OnHurt.Broadcast(Ratio);  
-
-        UE_LOG(LogTemp, Warning, TEXT("Took damage, ratio = %.2f"), Ratio);
 
         if (OwningCharacter)
         {

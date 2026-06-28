@@ -33,7 +33,6 @@ void ADoor::BeginPlay()
 
     if (!Hinge || !DoorMesh)
     {
-        UE_LOG(LogTemp, Error, TEXT("ADoor missing Hinge or DoorMesh"));
         return;
     }
 
@@ -47,15 +46,10 @@ void ADoor::BeginPlay()
     Hinge->SetRelativeRotation(ClosedRotation);
     DoorMesh->SetRelativeLocation(DoorBaseRelativeLocation + ClosedOnlyRelativeLocationOffset);
 
-    UE_LOG(LogTemp, Warning, TEXT("Door Base: %s | Closed Offset: %s | Open Offset: %s"),
-        *DoorBaseRelativeLocation.ToString(),
-        *ClosedOnlyRelativeLocationOffset.ToString(),
-        *OpenDoorRelativeLocationOffset.ToString());
 }
 
 void ADoor::ToggleDoor()
 {
-    UE_LOG(LogTemp, Warning, TEXT("ToggleDoor called on %s"), *GetName());
 
     if (!Hinge || !DoorMesh)
     {

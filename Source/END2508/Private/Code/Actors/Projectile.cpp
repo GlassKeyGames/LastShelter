@@ -93,8 +93,6 @@ void AProjectile::HandleHit(UPrimitiveComponent* HitComponent, AActor* OtherActo
         return;
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("[Projectile] Hit: %s | Owner: %s | Instigator: %s"),
-        *GetNameSafe(OtherActor), *GetNameSafe(MyOwner), *GetNameSafe(MyInstigator));
 
     AController* InstigatorController = nullptr;
     if (const APawn* InstPawn = Cast<APawn>(MyInstigator))
@@ -124,7 +122,6 @@ void AProjectile::HandleHit(UPrimitiveComponent* HitComponent, AActor* OtherActo
 
 void AProjectile::HandleOverlap(UPrimitiveComponent* OverlappedComponent, AActor* otherActor, UPrimitiveComponent* OtherComp, int32 otherBodyIndex, bool bFromSweep, const FHitResult& sweepResult)
 {
-	UE_LOG(Game, Warning, TEXT("Other Actor Name is: %s"), *otherActor->GetName());
 
 	Destroy();
 }

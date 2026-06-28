@@ -34,13 +34,11 @@ EBTNodeResult::Type UEnemyReload::ExecuteTask(UBehaviorTreeComponent& OwnerComp,
         }
         else
         {
-            UE_LOG(LogTemp, Error, TEXT("AIPawn implements interface but cast failed."));
             return EBTNodeResult::Failed;
         }
     }
     else
     {
-        UE_LOG(LogTemp, Warning, TEXT("AI pawn does not implement EnemyReload interface"));
         return EBTNodeResult::Failed;
     }
 

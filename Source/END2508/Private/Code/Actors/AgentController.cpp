@@ -43,12 +43,6 @@ void AAgentController::OnPossess(APawn* InPawn)
 	if (UseBlackboard(BBAsset, BlackboardComp))
 	{
 		RunBehaviorTree(BTAsset);
-
-		UE_LOG(LogTemp, Warning, TEXT("? Behavior Tree started on AI: %s"), *GetName());
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("? Failed to use blackboard for: %s"), *GetName());
 	}
 }
 
@@ -64,15 +58,9 @@ void AAgentController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 	if (Stimulus.WasSuccessfullySensed())
 	{
 		BlackboardComp->SetValueAsObject(PlayerKeyName, Actor);
-		UE_LOG(LogTemp, Warning, TEXT("??? Player seen: %s"), *Actor->GetName());
-	}
-	else
-	{
-		// Do NOT clear immediately on sight loss
-		UE_LOG(LogTemp, Warning, TEXT("Lost sight of player, keeping blackboard target."));
 	}
 
 	UObject* CheckValue = BlackboardComp->GetValueAsObject(PlayerKeyName);
 	FString CheckName = CheckValue ? CheckValue->GetName() : TEXT("None");
-	UE_LOG(LogTemp, Warning, TEXT("?? Blackboard 'Player' is now: %s"), *CheckName);
+
 }

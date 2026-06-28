@@ -20,7 +20,6 @@ void UReloadNow::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Ani
 	{
 		if (ARifle* R = Player->Weapon)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("? ReloadNow Notify: Calling ReloadAmmo() directly"));
 			R->CompleteReload(); // You SHOULD call this here
 		}
 	}

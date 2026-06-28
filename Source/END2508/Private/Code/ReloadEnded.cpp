@@ -19,7 +19,6 @@ void UReloadEnded::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* A
 	{
 		if (ARifle* R = Player->Weapon)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("? AnimNotify: Player reload complete."));
 			R->ResetAction();
 		}
 	}

@@ -56,15 +56,8 @@ void AAgent::BeginPlay()
 			Weapon->OnAmmoChanged.AddDynamic(this, &AAgent::UpdateBlackboardAmmo);
 		}
 	
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to spawn rifle for %s"), *GetName());
-		}
 	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("RifleClass not set for %s"), *GetName());
-	}
+
 
 	if (UCharacterAnimation* Anim = Cast<UCharacterAnimation>(GetMesh()->GetAnimInstance()))
 	{
@@ -233,13 +226,10 @@ void AAgent::HandleDeath(float Ratio)
 
 	// Detach from AI Controller
 	DetachFromControllerPendingDestroy();
-
-	UE_LOG(LogTemp, Warning, TEXT("Agent detached from controller after death: %s"), *GetName());
 }
 
 void AAgent::DestroySelfAfterDeath()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Agent DestroySelfAfterDeath called: %s"), *GetName());
 
 	Destroy();
 }

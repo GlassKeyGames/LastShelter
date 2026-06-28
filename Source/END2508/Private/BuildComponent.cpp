@@ -41,27 +41,18 @@ void UBuildComponent::BeginPlay()
 	{
 		const FBoxSphereBounds Bounds = FoundationMesh->GetBounds();
 		TileSize = Bounds.BoxExtent.X * 2.f; // full width
-		UE_LOG(LogTemp, Warning, TEXT("Auto TileSize = %.2f  (Foundation Extent: %s)"),
-			TileSize,
-			*Bounds.BoxExtent.ToString());
 	}
 
 	if (WallMesh && WallZOffset <= 0.f)
 	{
 		const FBoxSphereBounds WallBounds = WallMesh->GetBounds();
 		WallZOffset = WallBounds.BoxExtent.Z; // half height
-		UE_LOG(LogTemp, Warning, TEXT("Auto WallZOffset = %.2f  (Wall Extent: %s)"),
-			WallZOffset,
-			*WallBounds.BoxExtent.ToString());
 	}
 
 	if (FenceMesh && FenceZOffset <= 0.f)
 	{
 		const FBoxSphereBounds FenceBounds = FenceMesh->GetBounds();
 		FenceZOffset = FenceBounds.BoxExtent.Z; // half height
-		UE_LOG(LogTemp, Warning, TEXT("Auto FenceZOffset = %.2f  (Fence Extent: %s)"),
-			FenceZOffset,
-			*FenceBounds.BoxExtent.ToString());
 	}
 
 	if (!CurrentBuildMesh && FoundationMesh)
@@ -197,7 +188,6 @@ void UBuildComponent::PlaceBuildable()
 
 		if (!NewDoor)
 		{
-			UE_LOG(LogTemp, Error, TEXT("DOOR SPAWN FAILED"));
 			return;
 		}
 
@@ -300,8 +290,6 @@ void UBuildComponent::PlaceBuildable()
 			BuildTransform.GetLocation()
 		);
 	}
-
-	UE_LOG(LogTemp, Warning, TEXT("Placed build piece: %s"), *MeshToUse->GetName());
 }
 bool UBuildComponent::IsWallMesh(UStaticMesh* Mesh) const
 {
@@ -331,9 +319,6 @@ void UBuildComponent::SetCurrentBuild(UStaticMesh* NewMesh, const FText& Label, 
 	// Force overwrite every time
 	CurrentWoodCost = FMath::Max(0, WoodCost);
 	CurrentStoneCost = FMath::Max(0, StoneCost);
-
-	UE_LOG(LogTemp, Warning, TEXT("SetCurrentBuild -> %s | Wood=%d | Stone=%d"),
-		*Label.ToString(), CurrentWoodCost, CurrentStoneCost);
 
 	if (BuildPreview && CurrentBuildMesh)
 	{
@@ -505,19 +490,8 @@ void UBuildComponent::BuildCycle()
 					false, 0.f, 0, 2.f
 				);
 			}
-
-			UE_LOG(LogTemp, Warning,
-				TEXT("[BuildComponent] Fence placement at %s (Impact=%s, ZOffset=%.2f)"),
-				*P.ToString(),
-				*HitResult.ImpactPoint.ToString(),
-				FenceZOffset);
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[BuildComponent] Fence: no hit, CanPlace=false"));
 		}
 
-		DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 		return;
 	}
 
@@ -619,13 +593,6 @@ void UBuildComponent::BuildCycle()
 					BuildTransform.SetLocation(NewLoc);
 					BuildTransform.SetRotation(HitRot.Quaternion());
 
-					UE_LOG(LogTemp, Warning,
-						TEXT("SQUARE WALL STACK: Base=%s NewLoc=%s Extents=%s Rot=%s"),
-						*HitCenter.ToString(),
-						*NewLoc.ToString(),
-						*HitBounds.BoxExtent.ToString(),
-						*HitRot.ToString());
-
 					CanPlace = true;
 					DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 					return;
@@ -645,12 +612,6 @@ void UBuildComponent::BuildCycle()
 					BuildTransform.SetLocation(NewLoc);
 					BuildTransform.SetRotation(HitRot.Quaternion());
 
-					UE_LOG(LogTemp, Warning,
-						TEXT("TRI WALL STACK: Base=%s NewLoc=%s Extents=%s Rot=%s"),
-						*HitCenter.ToString(),
-						*NewLoc.ToString(),
-						*HitBounds.BoxExtent.ToString(),
-						*HitRot.ToString());
 
 					CanPlace = true;
 					DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
@@ -697,14 +658,6 @@ void UBuildComponent::BuildCycle()
 					BuildTransform.SetLocation(NewLoc);
 					BuildTransform.SetRotation(FRotator(0.f, Yaw, 0.f).Quaternion());
 
-					UE_LOG(LogTemp, Warning,
-						TEXT("TRI WALL ON REG CEILING: Center=%s NewLoc=%s EdgeHalf=%.2f WallDepth=%.2f Yaw=%.1f"),
-						*HitCenter.ToString(),
-						*NewLoc.ToString(),
-						EdgeHalf,
-						WallHalfDepth,
-						Yaw);
-
 					CanPlace = true;
 					DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 					return;
@@ -738,17 +691,7 @@ void UBuildComponent::BuildCycle()
 					BuildTransform.SetLocation(RoofLoc);
 					BuildTransform.SetRotation(HitRot.Quaternion());
 
-					UE_LOG(LogTemp, Warning,
-						TEXT("TRI ROOF SNAP: WallCenter=%s RoofLoc=%s WallHalf=%.2f RoofHalf=%.2f SideOffset=%.2f ExtraZ=%.2f"),
-						*HitCenter.ToString(),
-						*RoofLoc.ToString(),
-						WallHalfHeight,
-						RoofHalfHeight,
-						RoofSideOffset,
-						RoofExtraZOffset);
-
 					CanPlace = true;
-					DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 					return;
 				}
 
@@ -766,31 +709,10 @@ void UBuildComponent::BuildCycle()
 			UStaticMeshComponent* HitMesh =
 				HitActor->FindComponentByClass<UStaticMeshComponent>();
 
-			if (!HitMesh)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Hit foundation has no StaticMeshComponent, abort snap"));
-				DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
-				return;
-			}
-
+		
 			const FBoxSphereBounds HitBounds = HitMesh->Bounds;
 			const FVector BaseLoc = HitBounds.Origin;
 
-			// Debug draw
-			DrawDebugBox(
-				GetWorld(),
-				BaseLoc,
-				HitBounds.BoxExtent,
-				FColor::Yellow,
-				false, 0.f, 0, 2.f);
-
-			UE_LOG(LogTemp, Warning,
-				TEXT("SNAP BASE: BaseLoc=%s  Impact=%s  Normal=%s  FoundationExtents=%s  PlacingWall=%d"),
-				*BaseLoc.ToString(),
-				*HitResult.ImpactPoint.ToString(),
-				*HitResult.ImpactNormal.ToString(),
-				*HitBounds.BoxExtent.ToString(),
-				bPlacingAnyWall ? 1 : 0);
 
 			// ---------- FOUNDATION ? FOUNDATION tiling ----------
 			if (!bPlacingAnyWall)
@@ -813,16 +735,11 @@ void UBuildComponent::BuildCycle()
 				FVector Snapped = BaseLoc + Offset;
 				Snapped.Z = BaseLoc.Z;
 
-				UE_LOG(LogTemp, Warning,
-					TEXT("FOUNDATION SNAP: Offset=%s  SnappedLoc=%s"),
-					*Offset.ToString(),
-					*Snapped.ToString());
 
 				BuildTransform.SetLocation(Snapped);
 				BuildTransform.SetRotation(FQuat::Identity);
 
 				CanPlace = true;
-				DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 				return;
 			}
 			// ---------- FOUNDATION ? WALL snapping ----------
@@ -834,14 +751,12 @@ void UBuildComponent::BuildCycle()
 					if (!bHitSquareFoundation)
 					{
 						CanPlace = false;
-						DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 						return;
 					}
 
 					if (!CurrentBuildMesh)
 					{
 						CanPlace = false;
-						DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 						return;
 					}
 
@@ -879,17 +794,11 @@ void UBuildComponent::BuildCycle()
 					FVector EdgeLoc = BaseLoc + Dir * Offset;
 					EdgeLoc.Z = BaseLoc.Z + HitBounds.BoxExtent.Z + WallZOffset;
 
-					UE_LOG(LogTemp, Warning, TEXT("FINAL SQUARE WALL SNAP: Loc=%s  Dir=%s  Offset=%.2f  Yaw=%.1f"),
-						*EdgeLoc.ToString(),
-						*Dir.ToString(),
-						Offset,
-						Yaw);
 
 					BuildTransform.SetLocation(EdgeLoc);
 					BuildTransform.SetRotation(FRotator(0.f, Yaw, 0.f).Quaternion());
 
 					CanPlace = true;
-					DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 					return;
 				}
 
@@ -899,14 +808,12 @@ void UBuildComponent::BuildCycle()
 					if (!bHitTriangleFoundation)
 					{
 						CanPlace = false;
-						DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 						return;
 					}
 
 					if (!CurrentBuildMesh)
 					{
 						CanPlace = false;
-						DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 						return;
 					}
 
@@ -941,17 +848,10 @@ void UBuildComponent::BuildCycle()
 					// Height: top of foundation
 					EdgeLoc.Z = BaseLoc.Z + HitBounds.BoxExtent.Z;
 
-					UE_LOG(LogTemp, Warning, TEXT("TRI CEILING SNAP ON TRI FOUNDATION: Loc=%s  Dir=%s  Offset=%.2f  Yaw=%.1f"),
-						*EdgeLoc.ToString(),
-						*Dir.ToString(),
-						Offset,
-						Yaw);
-
 					BuildTransform.SetLocation(EdgeLoc);
 					BuildTransform.SetRotation(FRotator(0.f, Yaw, 0.f).Quaternion());
 
 					CanPlace = true;
-					DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 					return;
 				}
 
@@ -959,7 +859,6 @@ void UBuildComponent::BuildCycle()
 				if (bPlacingTriangleWall || bPlacingTriangleRoof)
 				{
 					CanPlace = false;
-					DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 					return;
 				}
 			}
@@ -996,13 +895,10 @@ void UBuildComponent::BuildCycle()
 		BuildTransform.SetRotation(FQuat::Identity);
 		CanPlace = true;
 	}
-
-	DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
 }
 
 void UBuildComponent::SpawnBuildable()
 {
-	UE_LOG(LogTemp, Warning, TEXT("[BuildComponent] SpawnBuildable called"));
 
 	BuildPreview = Cast<UStaticMeshComponent>(
 		PlayerRef->AddComponentByClass(
@@ -1010,12 +906,6 @@ void UBuildComponent::SpawnBuildable()
 			false,
 			BuildTransform,
 			false));
-
-	if (!BuildPreview)
-	{
-		UE_LOG(LogTemp, Error, TEXT("[BuildComponent] FAILED to create BuildPreview component!"));
-		return;
-	}
 
 	// use current build, fallback to foundation
 	UStaticMesh* LoadedMesh = CurrentBuildMesh ? CurrentBuildMesh : FoundationMesh;
@@ -1029,13 +919,6 @@ void UBuildComponent::SpawnBuildable()
 		BuildPreview->SetHiddenInGame(false);
 		BuildPreview->SetCastShadow(false);
 
-		UE_LOG(LogTemp, Warning,
-			TEXT("[BuildComponent] BuildPreview mesh set to: %s"),
-			*LoadedMesh->GetName());
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("[BuildComponent] No mesh available for preview!"));
 	}
 }
 
@@ -1166,8 +1049,6 @@ void UBuildComponent::DestroyCurrentTarget()
 	AActor* ToDestroy = DestroyCandidate;
 	DestroyCandidate = nullptr;
 
-	UE_LOG(LogTemp, Warning, TEXT("Destroying build structure: %s"), *ToDestroy->GetName());
-
 	// PLAY DESTROY SOUND
 	if (DestroysBuildSound)
 	{
@@ -1225,7 +1106,6 @@ void UBuildComponent::StartDestroyMode()
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("BuildComponent: Destroy mode STARTED"));
 }
 
 
@@ -1312,22 +1192,11 @@ bool UBuildComponent::CanAffordCurrentBuild() const
 	const ABasePlayer* Player = Cast<ABasePlayer>(PlayerRef);
 	if (!Player)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CanAffordCurrentBuild -> No player"));
 		return false;
 	}
 
 	const bool bEnoughWood = Player->WoodCount >= CurrentWoodCost;
 	const bool bEnoughStone = Player->StoneCount >= CurrentStoneCost;
-
-	UE_LOG(LogTemp, Warning,
-		TEXT("CanAffordCurrentBuild -> Player Wood=%d Stone=%d | Need Wood=%d Stone=%d | EnoughWood=%d EnoughStone=%d"),
-		Player->WoodCount,
-		Player->StoneCount,
-		CurrentWoodCost,
-		CurrentStoneCost,
-		bEnoughWood ? 1 : 0,
-		bEnoughStone ? 1 : 0
-	);
 
 	return bEnoughWood && bEnoughStone;
 }
@@ -1337,22 +1206,9 @@ void UBuildComponent::SpendResourcesForCurrentBuild()
 	ABasePlayer* Player = Cast<ABasePlayer>(PlayerRef);
 	if (!Player) return;
 
-	UE_LOG(LogTemp, Warning,
-		TEXT("Before Spend -> Wood=%d Stone=%d | Spending Wood=%d Stone=%d"),
-		Player->WoodCount,
-		Player->StoneCount,
-		CurrentWoodCost,
-		CurrentStoneCost
-	);
-
 	Player->WoodCount = FMath::Max(0, Player->WoodCount - CurrentWoodCost);
 	Player->StoneCount = FMath::Max(0, Player->StoneCount - CurrentStoneCost);
 
 	Player->UpdateResourceHUD();
 
-	UE_LOG(LogTemp, Warning,
-		TEXT("After Spend -> Wood=%d Stone=%d"),
-		Player->WoodCount,
-		Player->StoneCount
-	);
 }

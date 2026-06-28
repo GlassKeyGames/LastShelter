@@ -102,7 +102,6 @@ void UPlayerHUD::SetResources(int32 NewWood, int32 NewStone)
 
 void UPlayerHUD::SetAmmo(float Current, float Max)
 {
-    UE_LOG(LogTemp, Warning, TEXT("?? HUD SetAmmo: %.0f / %.0f"), Current, Max); // <-- Add this
 
     if (CurrentAmmo)
     {

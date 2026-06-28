@@ -163,38 +163,19 @@ void UCharacterAnimation::SetFireAsset(UAnimSequence* InAnim)
 {
 	if (!InAnim || !IsValid(InAnim))
 	{
-		UE_LOG(LogTemp, Error, TEXT("Invalid FireAsset passed to SetFireAsset"));
 		return;
 	}
 
 	FireAsset = InAnim;
-	UE_LOG(LogTemp, Warning, TEXT("SetFireAsset assigned: %s"), *InAnim->GetName());
 }
 
 void UCharacterAnimation::FireAnimation()
 {
-	UE_LOG(LogTemp, Error, TEXT("=== FireAnimation CALLED | Pawn=%s | Time=%.3f ==="),
-		*GetNameSafe(TryGetPawnOwner()),
-		GetWorld() ? GetWorld()->GetTimeSeconds() : -1.f);
-
-	if (!FireAsset)
-	{
-		UE_LOG(LogTemp, Error, TEXT("FireAsset is null"));
-		return;
-	}
-
 	PlaySlotAnimationAsDynamicMontage(FireAsset, ActionSlotName, 0.1f, 0.1f, 1.0f, 1);
-	UE_LOG(LogTemp, Warning, TEXT("Fire animation played: %s"), *FireAsset->GetName());
 }
 
 void UCharacterAnimation::HitAnimation()
 {
-	if (!HurtAsset)
-	{
-		UE_LOG(LogTemp, Error, TEXT("HurtAsset is null"));
-		return;
-	}
-
 	if (HurtSound && TryGetPawnOwner())
 	{
 		UGameplayStatics::PlaySoundAtLocation(
@@ -204,27 +185,14 @@ void UCharacterAnimation::HitAnimation()
 		);
 	}
 
-	UE_LOG(LogTemp, Error, TEXT("=== HitAnimation CALLED | Pawn=%s | Time=%.3f ==="),
-		*GetNameSafe(TryGetPawnOwner()),
-		GetWorld() ? GetWorld()->GetTimeSeconds() : -1.f);
-
 	PlaySlotAnimationAsDynamicMontage(HurtAsset, ActionSlotName, 0.1f, 0.1f, 1.0f, 1);
-	UE_LOG(LogTemp, Warning, TEXT("Hurt animation played: %s"), *HurtAsset->GetName());
 }
 
 void UCharacterAnimation::PlayDeathAnimation()
 {
 	SelectDeathAsset();
 
-	if (!CurrentDeathAsset)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("No valid death animation to play"));
-		return;
-	}
-
 	bIsDead = true; // <-- THIS drives the state machine
-
-	UE_LOG(LogTemp, Warning, TEXT("Death triggered. Asset: %s"), *CurrentDeathAsset->GetName());
 
 	const float Duration = CurrentDeathAsset->GetPlayLength();
 
@@ -246,78 +214,43 @@ void UCharacterAnimation::SelectDeathAsset()
 {
 	if (DeathAssets.Num() == 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No Death Assets available"));
 		return;
 	}
 
 	int32 Index = FMath::RandRange(0, DeathAssets.Num() - 1);
 	CurrentDeathAsset = DeathAssets[Index];
 
-	UE_LOG(LogTemp, Warning, TEXT("Selected Death Asset: %s"),
-		*CurrentDeathAsset->GetName());
 }
 
 void UCharacterAnimation::ReloadAnimation()
 {
-	UE_LOG(LogTemp, Error, TEXT("=== ReloadAnimation CALLED | Pawn=%s | Time=%.3f ==="),
-		*GetNameSafe(TryGetPawnOwner()),
-		GetWorld() ? GetWorld()->GetTimeSeconds() : -1.f);
-
-	if (!ReloadAsset)
-	{
-		UE_LOG(LogTemp, Error, TEXT("ReloadAsset is null — cannot play reload animation"));
-		return;
-	}
 
 	PlaySlotAnimationAsDynamicMontage(ReloadAsset, ActionSlotName, 0.25f, 0.25f, 1.0f, 1);
-	UE_LOG(LogTemp, Warning, TEXT("Reload animation played: %s"), *ReloadAsset->GetName());
 }
 
 void UCharacterAnimation::DeathEnded()
 {
-	UE_LOG(LogTemp, Warning, TEXT("? Death animation finished — DeathEnded() called."));
 	OnDeathEnded.Broadcast();
 }
 
 void UCharacterAnimation::AxeAnimation()
 {
-	if (!AxeAsset)
-	{
-		UE_LOG(LogTemp, Error, TEXT("AxeAsset is null — cannot play axe animation"));
-		return;
-	}
-
-
 	PlaySlotAnimationAsDynamicMontage(AxeAsset, ActionSlotName, 0.25f, 0.25f, 1.0f, 1);
-	UE_LOG(LogTemp, Warning, TEXT("Axe animation played: %s"), *AxeAsset->GetName());
 }
 
 void UCharacterAnimation::PickaxeAnimation()
 {
-	if (!PickaxeAsset)
-	{
-		UE_LOG(LogTemp, Error, TEXT("PickaxeAsset is null"));
-		return;
-	}
 
 	PlaySlotAnimationAsDynamicMontage(PickaxeAsset, ActionSlotName, 0.1f, 0.1f, 1.0f, 1);
 }
 
 void UCharacterAnimation::FlashlightAnimation()
 {
-	if (!FlashlightAsset)
-	{
-		UE_LOG(LogTemp, Error, TEXT("FlashlightAsset is null"));
-		return;
-	}
-
 	PlaySlotAnimationAsDynamicMontage(
 		FlashlightAsset,
 		ActionSlotName,   // must match slot node name in AnimBP
 		0.1f, 0.1f, 1.0f, 1);
 
-	UE_LOG(LogTemp, Warning, TEXT("Flashlight animation played: %s"),
-		*FlashlightAsset->GetName());
 }
 
 void UCharacterAnimation::AnimNotify_Footstep()
@@ -335,9 +268,6 @@ void UCharacterAnimation::AnimNotify_Footstep()
 	const float Speed2D = Character->GetVelocity().Size2D();
 	const bool bFalling = MoveComp->IsFalling();
 
-	UE_LOG(LogTemp, Warning, TEXT("Footstep notify fired | Pawn=%s | Speed2D=%.2f | Falling=%d"),
-		*GetNameSafe(Pawn), Speed2D, bFalling);
-
 	// Gate
 	if (!MoveComp->IsMovingOnGround()) return;
 	if (Speed2D <= MinFootstepSpeed) return;
@@ -349,12 +279,6 @@ void UCharacterAnimation::AnimNotify_Footstep()
 
 void UCharacterAnimation::ZombieAttackAnimation()
 {
-	if (!ZombieAttackAsset)
-	{
-		UE_LOG(LogTemp, Error, TEXT("ZombieAttackAsset is null"));
-		return;
-	}
-
 	PlaySlotAnimationAsDynamicMontage(ZombieAttackAsset, ActionSlotName, 0.1f, 0.1f, 1.0f, 1);
-	UE_LOG(LogTemp, Warning, TEXT("Zombie attack animation played: %s"), *ZombieAttackAsset->GetName());
+
 }
