@@ -14,6 +14,10 @@ void UMyGameInstance::LoadFirstLevel()
 
 		UGameplayStatics::OpenLevel(this, LevelName);
 	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid FirstLevelIndex!"));
+	}
 }
 
 void UMyGameInstance::LoadCurrentLevel()
@@ -21,6 +25,10 @@ void UMyGameInstance::LoadCurrentLevel()
 	if (GameLevels.IsValidIndex(CurrentLevelIndex))
 	{
 		UGameplayStatics::OpenLevel(this, GameLevels[CurrentLevelIndex]);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid CurrentLevelIndex in LoadCurrentLevel"));
 	}
 }
 

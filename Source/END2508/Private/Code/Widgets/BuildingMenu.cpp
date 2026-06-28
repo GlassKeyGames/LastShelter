@@ -82,6 +82,9 @@ void UBuildingMenu::PopulateSlots()
     {
         if (!Option.Mesh) continue;
 
+        UE_LOG(LogTemp, Warning, TEXT("PopulateSlots -> %s | Wood=%d | Stone=%d"),
+            *Option.Label.ToString(), Option.WoodCost, Option.StoneCost);
+
         UButtonBuildingSlot* SlotWidget =
             CreateWidget<UButtonBuildingSlot>(World, SlotWidgetClass);
 
@@ -106,6 +109,8 @@ void UBuildingMenu::PopulateSlots()
 
 void UBuildingMenu::HandleSlotClicked(UStaticMesh* Mesh, FText Label, int32 WoodCost, int32 StoneCost)
 {
+    UE_LOG(LogTemp, Warning, TEXT("Menu Clicked -> %s | WoodCost=%d | StoneCost=%d"),
+        *Label.ToString(), WoodCost, StoneCost);
 
     if (BuildComponentRef && Mesh)
     {
@@ -170,6 +175,8 @@ void UBuildingMenu::HandleCloseClicked()
 
 void UBuildingMenu::HandleDestroyHovered(FText Name, FText Description, FText Requirements)
 {
+    // You can either use Name/Description/Requirements passed in,
+    // or ignore them and hard-code text. Using them keeps it flexible.
     if (NameTxt)
     {
         NameTxt->SetText(Name);
@@ -186,6 +193,7 @@ void UBuildingMenu::HandleDestroyHovered(FText Name, FText Description, FText Re
 
 void UBuildingMenu::HandleDestroyUnhovered()
 {
+    // Optional: clear the info box when leaving destroy
     if (NameTxt)
     {
         NameTxt->SetText(FText::GetEmpty());

@@ -42,6 +42,9 @@ void AMyGameMode::BeginPlay()
         Spawner->OnDestroyed.AddDynamic(this, &AMyGameMode::HandleSpawnerDestroyed);
     }
 
+    UE_LOG(LogTemp, Warning, TEXT("Enemies tracked: %d | Spawners tracked: %d"),
+        NumberOfEnemies, NumberOfSpawners);
+
     if (ResultsWidgetClass)
     {
         ResultsWidgetObject = CreateWidget<UResults>(GetWorld(), ResultsWidgetClass);
@@ -55,12 +58,20 @@ void AMyGameMode::BeginPlay()
     if (Player)
     {
         Player->OnPlayerLost.AddDynamic(this, &AMyGameMode::RemovePlayer);
+        UE_LOG(LogTemp, Warning, TEXT("Bound GameMode::RemovePlayer to OnPlayerLost delegate"));
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Failed to bind: could not get player pawn"));
     }
 }
 
 void AMyGameMode::HandleEnemyDestroyed(AActor* DestroyedActor)
 {
     NumberOfEnemies = FMath::Max(0, NumberOfEnemies - 1);
+
+    UE_LOG(LogTemp, Warning, TEXT("Enemy destroyed. Remaining enemies: %d | Remaining spawners: %d"),
+        NumberOfEnemies, NumberOfSpawners);
 
     CheckWinCondition();
 }
@@ -76,10 +87,14 @@ void AMyGameMode::RegisterSpawnedEnemy(AActor* SpawnedEnemy)
 
     SpawnedEnemy->OnDestroyed.AddUniqueDynamic(this, &AMyGameMode::HandleEnemyDestroyed);
 
+    UE_LOG(LogTemp, Warning, TEXT("Spawned enemy registered. Enemies: %d | Spawners: %d"),
+        NumberOfEnemies, NumberOfSpawners);
+
 }
 
 void AMyGameMode::RemovePlayer()
 {
+    UE_LOG(LogTemp, Warning, TEXT("You Lose!"));
 
     if (LoseSound)
     {
@@ -136,6 +151,7 @@ void AMyGameMode::CheckWinCondition()
 
     if (NumberOfEnemies <= 0 && NumberOfSpawners <= 0)
     {
+        UE_LOG(LogTemp, Warning, TEXT("YOU WIN!"));
 
         if (WinSound)
         {

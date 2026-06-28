@@ -58,4 +58,5 @@ void AFlashlight::SetLightEnabled(bool bEnabled)
         SpotLight->SetHiddenInGame(!bIsOn, true);
     }
 
+    UE_LOG(LogTemp, Warning, TEXT("[Flashlight] %s"), bIsOn ? TEXT("ON") : TEXT("OFF"));
 }

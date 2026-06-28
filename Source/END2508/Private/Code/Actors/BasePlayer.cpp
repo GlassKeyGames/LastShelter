@@ -95,6 +95,8 @@ void ABasePlayer::ToggleCameraView()
         bUseControllerRotationYaw = true;
         bUseControllerRotationRoll = false;
 
+
+        UE_LOG(LogTemp, Warning, TEXT("Switched to FIRST PERSON"));
     }
     else
     {
@@ -110,6 +112,7 @@ void ABasePlayer::ToggleCameraView()
         // Show body again
         GetMesh()->SetOwnerNoSee(false);
 
+        UE_LOG(LogTemp, Warning, TEXT("Switched to THIRD PERSON"));
     }
 }
 
@@ -125,6 +128,11 @@ void ABasePlayer::BeginPlay()
             if (MappingContext)
             {
                 Subsystem->AddMappingContext(MappingContext, 0);
+                UE_LOG(LogTemp, Warning, TEXT("? Added Input Mapping Context"));
+            }
+            else
+            {
+                UE_LOG(LogTemp, Error, TEXT("? InputMappingContext is NULL. Assign it in BP."));
             }
         }
     }
@@ -141,6 +149,15 @@ void ABasePlayer::BeginPlay()
         if (Axe)
         {
             Axe->InitializeAxe(this);
+
+            if (!GetMesh()->DoesSocketExist(AxeAttachSocket))
+            {
+                UE_LOG(LogTemp, Error, TEXT("Missing axe socket: %s"), *AxeAttachSocket.ToString());
+            }
+            else
+            {
+                UE_LOG(LogTemp, Warning, TEXT("Axe socket found: %s"), *AxeAttachSocket.ToString());
+            }
 
             Axe->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, AxeAttachSocket);
             Axe->SetActorRelativeLocation(FVector::ZeroVector);
@@ -175,6 +192,11 @@ void ABasePlayer::BeginPlay()
             Pickaxe->SetActorHiddenInGame(true); // start hidden until equipped
             Pickaxe->SetActorEnableCollision(false);
 
+            UE_LOG(LogTemp, Warning, TEXT("Pickaxe attached to %s"), *AxeAttachSocket.ToString());
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to spawn Pickaxe"));
         }
     }
 
@@ -203,6 +225,12 @@ void ABasePlayer::BeginPlay()
             Flashlight->SetActorHiddenInGame(true);
             Flashlight->SetActorEnableCollision(false);
 
+            UE_LOG(LogTemp, Warning, TEXT("[Flashlight] Spawned and attached to %s"),
+                *FlashlightAttachSocket.ToString());
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("[Flashlight] Failed to spawn Flashlight"));
         }
     }
 
@@ -231,8 +259,12 @@ void ABasePlayer::BeginPlay()
                 HealthComponent->OnHurt.AddDynamic(HUDWidget, &UPlayerHUD::SetHealth);
             }
 
+            UE_LOG(LogTemp, Warning, TEXT("Player HUD created successfully"));
         }
-       
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to create Player HUD"));
+        }
     }
 
     if (HUDWidget)
@@ -260,6 +292,26 @@ void ABasePlayer::BeginPlay()
     {
         PlayerRifle->OnAmmoChanged.AddDynamic(HUDWidget, &UPlayerHUD::SetAmmo);
         UpdateAmmoHUD();
+        UE_LOG(LogTemp, Warning, TEXT("[Rifle] HUD bound to rifle ammo"));
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Rifle] HUD bind skipped. HUD=%p PlayerRifle=%p Weapon=%p"), HUDWidget, PlayerRifle, Weapon);
+    }
+
+    if (AgentToSpawn && HasAuthority())
+    {
+        const FVector SpawnLoc = GetActorLocation() + FVector(300.f, 0.f, 100.f);
+        const FRotator SpawnRot = GetActorRotation();
+
+        FActorSpawnParameters Params;
+        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+        if (APawn* Spawned = GetWorld()->SpawnActor<APawn>(AgentToSpawn, SpawnLoc, SpawnRot, Params))
+        {
+            Spawned->SpawnDefaultController();
+            UE_LOG(LogTemp, Log, TEXT("Spawned AI Pawn"), *Spawned->GetName());
+        }
     }
 
     if (WeaponChild)
@@ -280,16 +332,58 @@ void ABasePlayer::BeginPlay()
     {
         PC->SetInputMode(FInputModeGameOnly());
         PC->bShowMouseCursor = false;
+        UE_LOG(LogTemp, Warning, TEXT("Input mode set to GameOnly"));
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("PlayerController not found!"));
     }
 
     if (UCharacterAnimation* Anim = Cast<UCharacterAnimation>(GetMesh()->GetAnimInstance()))
     {
         Anim->OnDeathEnded.AddDynamic(this, &ABasePlayer::PlayerLost);
+        UE_LOG(LogTemp, Warning, TEXT("Bound PlayerLost to OnDeathEnded"));
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Could not bind PlayerLost: Anim instance not valid"));
     }
 
     if (BuildComponent)
     {
         BuildComponent->Camera = Camera;
+    }
+
+    if (BuildComponent)
+    {
+        if (BuildComponent->FenceMesh)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("[BasePlayer] FenceMesh on BuildComponent = %s"),
+                *BuildComponent->FenceMesh->GetName());
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("[BasePlayer] FenceMesh is NOT set on BuildComponent!"));
+        }
+    }
+
+    if (SpringArm)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[CAM-BEGIN] ArmLen=%.1f Rel=%s SockOff=%s TgtOff=%s DoColl=%d UsePCR=%d"),
+            SpringArm->TargetArmLength,
+            *SpringArm->GetRelativeLocation().ToString(),
+            *SpringArm->SocketOffset.ToString(),
+            *SpringArm->TargetOffset.ToString(),
+            SpringArm->bDoCollisionTest ? 1 : 0,
+            SpringArm->bUsePawnControlRotation ? 1 : 0
+        );
+    }
+    if (Camera)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[CAM-BEGIN] CamRel=%s UsePCR=%d"),
+            *Camera->GetRelativeLocation().ToString(),
+            Camera->bUsePawnControlRotation ? 1 : 0
+        );
     }
 }
 
@@ -302,7 +396,18 @@ void ABasePlayer::Tick(float DeltaTime)
         const FVector ArmLoc = SpringArm->GetComponentLocation();
         const FVector CamLoc = Camera->GetComponentLocation();
         const float Dist = FVector::Dist(ArmLoc, CamLoc);
+
+        UE_LOG(LogTemp, Warning,
+            TEXT("[CAM] ArmLen=%.1f Dist=%.1f ArmRel=%s SockOff=%s TgtOff=%s CamRel=%s"),
+            SpringArm->TargetArmLength,
+            Dist,
+            *SpringArm->GetRelativeLocation().ToString(),
+            *SpringArm->SocketOffset.ToString(),
+            *SpringArm->TargetOffset.ToString(),
+            *Camera->GetRelativeLocation().ToString()
+        );
     } 
+
 
     APlayerController* PC = Cast<APlayerController>(GetController());
     if (!PC || !HUDWidget) return;
@@ -325,6 +430,10 @@ void ABasePlayer::Tick(float DeltaTime)
     {
         AActor* HitActor = Hit.GetActor();
 
+        UE_LOG(LogTemp, Warning, TEXT("Hit actor: %s | HasEnemyTag=%d"),
+            *HitActor->GetName(),
+            HitActor->ActorHasTag("Enemy") ? 1 : 0);
+
         bShouldHighlight = HitActor->ActorHasTag("Enemy");
     }
 
@@ -337,7 +446,10 @@ void ABasePlayer::Tick(float DeltaTime)
             BuildComponent->IsDestroyModeActive();
     }
 
+    
+
     HUDWidget->SetReticleColor(bShouldHighlight);
+
 }
 
 
@@ -361,6 +473,7 @@ void ABasePlayer::Move(const FInputActionValue& Value)
 
     AddMovementInput(ForwardDir, Input.Y); //  W/S
     AddMovementInput(RightDir, Input.X); //  A/D
+    UE_LOG(LogTemp, Warning, TEXT("Move Input: X=%f Y=%f"), Input.X, Input.Y);
 
 }
 
@@ -385,13 +498,21 @@ void ABasePlayer::Look(const FInputActionValue& Value)
 
 void ABasePlayer::Jump()
 {
+    if (!CanJump())
+    {
+        UE_LOG(LogTemp, Error, TEXT("? Can't Jump!"));
+        return;
+    }
+
     Super::Jump();
     bJustJumped = true;
+    UE_LOG(LogTemp, Warning, TEXT("? Jump pressed!"));
 }
 
 void ABasePlayer::StopJumping()
 {
     Super::StopJumping();
+    UE_LOG(LogTemp, Warning, TEXT("Jump released!"));
 }
 
 void ABasePlayer::InputAxisMoveForward(float Value)
@@ -480,6 +601,11 @@ void ABasePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
                 this,
                 &ABasePlayer::HandleBuildKey);
 
+            UE_LOG(LogTemp, Warning, TEXT("Bound IA_BuildMode to HandleBuildKey"));
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("BuildModeAction is NULL (assign IA_BuildMode in BP defaults)"));
         }
 
         if (InteractAction)
@@ -496,6 +622,11 @@ void ABasePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
                 &ABasePlayer::ToggleCameraView
             );
 
+            UE_LOG(LogTemp, Warning, TEXT("Bound IA_ToggleView to ToggleCameraView"));
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("ToggleViewAction is NULL (assign IA_ToggleView in BP defaults)"));
         }
 
 		// Hotbar bindings
@@ -513,10 +644,16 @@ void ABasePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
         if (JumpAction)
         {
+            UE_LOG(LogTemp, Warning, TEXT("? Binding Jump Action"));
             EIC->BindAction(JumpAction, ETriggerEvent::Started, this, &ABasePlayer::Jump);
             EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ABasePlayer::StopJumping);
         }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("? JumpAction is null — assign IA_Jump in Blueprint"));
+        }
 
+        UE_LOG(LogTemp, Warning, TEXT("? JumpAction is bound to Spacebar"));
     }
 }
 
@@ -723,11 +860,15 @@ void ABasePlayer::AttackInput()
     {
         if (IsPlayerControlled() && Weapon)
         {
+            UE_LOG(LogTemp, Warning, TEXT("Player attempted to fire"));
 
             bool bFired = Weapon->Attack();
 
             if (!bFired)
             {
+                UE_LOG(LogTemp, Warning, TEXT("Weapon can't fire. Ammo: %.0f / %.0f"),
+                    Weapon->GetCurrentAmmo(), Weapon->GetMaxAmmo());
+
                 if (!Weapon->IsActionHappening() && Weapon->GetCurrentAmmo() <= 0)
                 {
                     Weapon->ReloadAmmo();
@@ -755,6 +896,7 @@ void ABasePlayer::TellAllAgentsToAttack()
             ICodeInterface* Interface = Cast<ICodeInterface>(Actor);
             if (Interface)
             {
+                UE_LOG(LogTemp, Warning, TEXT("Player telling %s to attack via interface!"), *Actor->GetName());
                 Interface->EnemyAttack(); 
             }
         }
@@ -773,6 +915,8 @@ void ABasePlayer::TellAllAgentsToAttack()
 
 void ABasePlayer::PlayerLost()
 {
+    UE_LOG(LogTemp, Warning, TEXT("PlayerLost triggered — player death animation finished"));
+
     // Broadcast for any listeners 
     OnPlayerLost.Broadcast();
 
@@ -789,10 +933,12 @@ void ABasePlayer::PlayerLost()
         PC->bShowMouseCursor = true;
     }
 
+    UE_LOG(LogTemp, Warning, TEXT("You Lose screen triggered from PlayerLost"));
 }
 
 void ABasePlayer::PlayerWin()
 {
+    UE_LOG(LogTemp, Warning, TEXT("PlayerWin triggered — player has won"));
 
     APlayerController* PC = Cast<APlayerController>(GetController());
     if (PC)
@@ -809,6 +955,7 @@ void ABasePlayer::PlayerWin()
     AMyGameMode* GM = Cast<AMyGameMode>(UGameplayStatics::GetGameMode(this));
     if (!GM || !GM->ResultsWidgetObject)
     {
+        UE_LOG(LogTemp, Error, TEXT("GameMode or ResultsWidgetObject is null in PlayerWin()"));
         return;
     }
 
@@ -821,6 +968,7 @@ void ABasePlayer::PlayerWin()
         PC->bShowMouseCursor = true;
     }
 
+    UE_LOG(LogTemp, Warning, TEXT("You Win screen shown from PlayerWin"));
 }
 
 
@@ -833,6 +981,8 @@ void ABasePlayer::PlayerWin()
 // INTERACTION
 void ABasePlayer::OnInteract()
 {
+    UE_LOG(LogTemp, Warning, TEXT("OnInteract pressed"));
+
     ADoor* FoundDoor = nullptr;
 
     const FVector Start = GetActorLocation() + FVector(0.f, 0.f, 50.f);
@@ -868,6 +1018,7 @@ void ABasePlayer::OnInteract()
 
             if (HitActor)
             {
+                UE_LOG(LogTemp, Warning, TEXT("Overlap hit: %s"), *HitActor->GetName());
 
                 if (ADoor* Door = Cast<ADoor>(HitActor))
                 {
@@ -877,9 +1028,15 @@ void ABasePlayer::OnInteract()
             }
         }
     }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No overlap found"));
+    }
 
     if (FoundDoor)
     {
+        UE_LOG(LogTemp, Warning, TEXT("Found nearby door: %s"), *FoundDoor->GetName());
+
         FoundDoor->ToggleDoor();
 
         if (HUDWidget)
@@ -967,9 +1124,11 @@ bool ABasePlayer::AddToFirstAvailableSlot(TSubclassOf<AActor> ItemClass, UTextur
 
             OutIndex = GunSlotIndex;
             EquipHotbarSlot(GunSlotIndex);
+            UE_LOG(LogTemp, Warning, TEXT("Picked up Rifle into reserved slot %d"), GunSlotIndex + 1);
             return true;
         }
 
+        UE_LOG(LogTemp, Warning, TEXT("Gun slot is already occupied"));
         return false;
     }
 
@@ -989,10 +1148,12 @@ bool ABasePlayer::AddToFirstAvailableSlot(TSubclassOf<AActor> ItemClass, UTextur
             }
 
             OutIndex = i;
+            UE_LOG(LogTemp, Warning, TEXT("Picked up %d into slot %d"), (int32)EquipType, i + 1);
             return true;
         }
     }
 
+    UE_LOG(LogTemp, Warning, TEXT("No available non-gun slots"));
     return false;
 }
 
@@ -1107,6 +1268,7 @@ void ABasePlayer::EquipHotbarSlot(int32 Index)
         HUDWidget->SetActiveInventorySlot(Index);
     }
 
+    UE_LOG(LogTemp, Warning, TEXT("[Equip] Slot=%d State=%d"), Index, (int32)EquipState);
 }
 
 

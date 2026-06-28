@@ -32,6 +32,7 @@ void AAmmoPickUp::HandlePickUp_Implementation(AActor* OtherActor, const FHitResu
     // Reject AI completely
     if (!Pawn->IsPlayerControlled())
     {
+        UE_LOG(LogTemp, Warning, TEXT("Ammo pickup: ignored AI pawn"), *Pawn->GetName());
         return; 
     }
 
@@ -39,6 +40,8 @@ void AAmmoPickUp::HandlePickUp_Implementation(AActor* OtherActor, const FHitResu
     {
         Player->AddMaxAmmo(PickupData.AmmoAmount);
         Player->HandleAmmoQuest();
+
+        UE_LOG(LogTemp, Warning, TEXT("Ammo pickup: picked up by PLAYER"));
 
         Destroy();
     }

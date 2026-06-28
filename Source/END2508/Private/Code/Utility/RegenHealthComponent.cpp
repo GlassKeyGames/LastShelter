@@ -54,6 +54,7 @@ void URegenHealthComponent::HandleDamage(AActor* DamagedActor, float Damage, con
 void URegenHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	UE_LOG(LogTemp, Log, TEXT("?? Regenerating health"));
 
 	// Use TakeDamage with a negative value to heal
 	Heal(1.f * DeltaTime);

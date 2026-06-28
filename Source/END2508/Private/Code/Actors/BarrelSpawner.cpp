@@ -78,6 +78,7 @@ float ABarrelSpawner::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	if (bIsDestroyed || DamageAmount <= 0.f) return 0.f;
 
 	CurrentHealth -= DamageAmount;
+	UE_LOG(LogTemp, Warning, TEXT("Barrel took %.1f damage. Remaining: %.1f"), DamageAmount, CurrentHealth);
 
 	if (CurrentHealth <= 0.f)
 	{
@@ -95,6 +96,7 @@ void ABarrelSpawner::HandleDestroyed()
 	BarrelMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetWorldTimerManager().ClearTimer(SpawnTimer);
 
+	UE_LOG(LogTemp, Warning, TEXT("BarrelSpawner destroyed."));
 
 	Destroy();
 }

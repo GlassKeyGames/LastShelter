@@ -109,6 +109,8 @@ void UResults::SetLose()
 	{
 		ResultsSwitch->SetActiveWidgetIndex(0); // Index 0 = "You Lose!" 
 	}
+
+	UE_LOG(LogTemp, Warning, TEXT("SetLose triggered — displaying lose screen"));
 }
 
 void UResults::LoadMainMenu()
