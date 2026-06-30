@@ -185,10 +185,17 @@ void UBuildComponent::PlaceBuildable()
 	}
 
 	// ----- DOOR -----
-	if (MeshToUse == DoorMesh && DoorClass)
+	if (IsDoorMesh(MeshToUse) && DoorClass)
 	{
+		TSubclassOf<ADoor> ClassToSpawn = DoorClass;
+
+		if (OtherDoorMeshes.Contains(MeshToUse) && StoneDoorClass)
+		{
+			ClassToSpawn = StoneDoorClass;
+		}
+
 		ADoor* NewDoor = World->SpawnActorDeferred<ADoor>(
-			DoorClass,
+			ClassToSpawn,
 			BuildTransform,
 			GetOwner(),
 			Cast<APawn>(GetOwner()),
@@ -197,7 +204,6 @@ void UBuildComponent::PlaceBuildable()
 
 		if (!NewDoor)
 		{
-			UE_LOG(LogTemp, Error, TEXT("DOOR SPAWN FAILED"));
 			return;
 		}
 
@@ -237,7 +243,11 @@ void UBuildComponent::PlaceBuildable()
 		NewActor->Tags.Add("Build_Wall_Square");
 		NewActor->Tags.Add("Build_Ceiling");
 	}
-	else if (IsWallMesh(MeshToUse))
+	else if (
+		IsWallMesh(MeshToUse) ||
+		IsDoorFrameMesh(MeshToUse) ||
+		IsWindowFrameMesh(MeshToUse)
+		)
 	{
 		NewActor->Tags.Add("Build_Wall");
 		NewActor->Tags.Add("Build_Wall_Square");
@@ -457,6 +467,7 @@ void UBuildComponent::BuildCycle()
 	// --- What are we currently placing? ---
 	const bool bIsFence = (CurrentBuildMesh == FenceMesh);
 	const bool bPlacingSquareWall = IsWallMesh(CurrentBuildMesh);
+	const bool bPlacingTorch = (CurrentBuildMesh == TorchMesh);
 
 	// Triangle sub-types
 	const bool bPlacingTriangleWall =
@@ -471,8 +482,8 @@ void UBuildComponent::BuildCycle()
 	const bool bPlacingTriangleEdge = bPlacingTriangleWall || bPlacingTriangleCeiling || bPlacingTriangleRoof;
 
 	const bool bPlacingAnyWall = bPlacingSquareWall || bPlacingTriangleEdge;
-	const bool bPlacingDoor = (CurrentBuildMesh == DoorMesh);
-	const bool bPlacingWindow = (CurrentBuildMesh == WindowMesh);
+	const bool bPlacingDoor = IsDoorMesh(CurrentBuildMesh);
+	const bool bPlacingWindow = IsWindowMesh(CurrentBuildMesh);
 	const bool bPlacingTriangleFoundation = IsTriangleFoundationMesh(CurrentBuildMesh);
 	const bool bPlacingSquareFoundation = IsFoundationMesh(CurrentBuildMesh);
 
@@ -535,11 +546,63 @@ void UBuildComponent::BuildCycle()
 		const bool bHitSquareWall = HitActor->ActorHasTag("Build_Wall_Square");
 		const bool bHitTriangleWall = HitActor->ActorHasTag("Build_Wall_Triangle");
 
+		// ---------- TORCH -> WALL snapping ----------
+		if (bPlacingTorch)
+		{
+			if (!bHitWall || !CurrentBuildMesh)
+			{
+				CanPlace = false;
+				DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
+				return;
+			}
+
+			UStaticMeshComponent* HitMesh = HitActor->FindComponentByClass<UStaticMeshComponent>();
+			if (!HitMesh)
+			{
+				CanPlace = false;
+				DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
+				return;
+			}
+
+			const FRotator WallRot = HitMesh->GetComponentRotation();
+
+			// Use the wall's facing direction from the hit normal.
+			FVector WallNormal = HitResult.ImpactNormal;
+			WallNormal.Z = 0.f;
+			WallNormal.Normalize();
+
+			// Push the torch slightly off the wall so it doesn't clip inside.
+			const float TorchWallOffset = 12.f;
+
+			FVector Loc = HitResult.ImpactPoint + WallNormal * TorchWallOffset;
+
+			// Raise/lower the torch on the wall. Adjust this number if needed.
+			Loc.Z += 20.f;
+
+			// Make torch face away from the wall.
+			const FRotator TorchRot = WallNormal.Rotation() + FRotator(0.f, -90.f, 0.f);
+
+			BuildTransform.SetLocation(Loc);
+			BuildTransform.SetRotation(TorchRot.Quaternion());
+
+			CanPlace = true;
+			DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Red, false, 0.f, 0, 2.f);
+			return;
+		}
+
 		// ---------- INSERT INTO FRAME ----------
 		if (bPlacingDoor || bPlacingWindow)
 		{
-			const bool bHitDoorFrame = PlacedFrame(HitActor, DoorFrameMesh);
-			const bool bHitWindowFrame = PlacedFrame(HitActor, WindowFrameMesh);
+			bool bHitDoorFrame = false;
+			bool bHitWindowFrame = false;
+
+			if (UStaticMeshComponent* FrameSM = HitActor->FindComponentByClass<UStaticMeshComponent>())
+			{
+				UStaticMesh* HitFrameMesh = FrameSM->GetStaticMesh();
+
+				bHitDoorFrame = IsDoorFrameMesh(HitFrameMesh);
+				bHitWindowFrame = IsWindowFrameMesh(HitFrameMesh);
+			}
 
 			if ((bPlacingDoor && bHitDoorFrame) || (bPlacingWindow && bHitWindowFrame))
 			{
@@ -1307,6 +1370,67 @@ bool UBuildComponent::IsCeilingMesh(UStaticMesh* Mesh) const
 
 	return OtherCeilingMeshes.Contains(Mesh);
 }
+
+bool UBuildComponent::IsDoorMesh(UStaticMesh* Mesh) const
+{
+	if (!Mesh)
+	{
+		return false;
+	}
+
+	if (Mesh == DoorMesh)
+	{
+		return true;
+	}
+
+	return OtherDoorMeshes.Contains(Mesh);
+}
+
+bool UBuildComponent::IsDoorFrameMesh(UStaticMesh* Mesh) const
+{
+	if (!Mesh)
+	{
+		return false;
+	}
+
+	if (Mesh == DoorFrameMesh)
+	{
+		return true;
+	}
+
+	return OtherDoorFrameMeshes.Contains(Mesh);
+}
+
+bool UBuildComponent::IsWindowMesh(UStaticMesh* Mesh) const
+{
+	if (!Mesh)
+	{
+		return false;
+	}
+
+	if (Mesh == WindowMesh)
+	{
+		return true;
+	}
+
+	return OtherWindowMeshes.Contains(Mesh);
+}
+
+bool UBuildComponent::IsWindowFrameMesh(UStaticMesh* Mesh) const
+{
+	if (!Mesh)
+	{
+		return false;
+	}
+
+	if (Mesh == WindowFrameMesh)
+	{
+		return true;
+	}
+
+	return OtherWindowFrameMeshes.Contains(Mesh);
+}
+
 bool UBuildComponent::CanAffordCurrentBuild() const
 {
 	const ABasePlayer* Player = Cast<ABasePlayer>(PlayerRef);

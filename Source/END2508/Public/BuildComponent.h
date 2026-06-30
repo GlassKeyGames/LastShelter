@@ -79,8 +79,16 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Build|Frames")
 	UStaticMesh* DoorFrameMesh = nullptr;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Frames")
+	TArray<UStaticMesh*> OtherDoorFrameMeshes;
+
+
 	UPROPERTY(EditAnywhere, Category = "Build|Frames")
 	UStaticMesh* WindowFrameMesh = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Frames")
+	TArray<UStaticMesh*> OtherWindowFrameMeshes;
+
 
 
 
@@ -92,8 +100,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Build|Door")
 	UStaticMesh* DoorMesh = nullptr;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Door")
+	TArray<UStaticMesh*> OtherDoorMeshes;
+
 	UPROPERTY(EditAnywhere, Category = "Build|Window")
 	UStaticMesh* WindowMesh = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Window")
+	TArray<UStaticMesh*> OtherWindowMeshes;
 
 
 
@@ -258,6 +272,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Door")
 	TSubclassOf<ADoor> DoorClass;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build|Door")
+	TSubclassOf<ADoor> StoneDoorClass;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Build")
 	int32 CurrentWoodCost = 0;
 
@@ -273,4 +290,8 @@ public:
 	bool IsCeilingMesh(UStaticMesh* Mesh) const;
 	bool CanAffordCurrentBuild() const;
 	void SpendResourcesForCurrentBuild();
+	bool IsDoorMesh(UStaticMesh* Mesh) const;
+	bool IsDoorFrameMesh(UStaticMesh* Mesh) const;
+	bool IsWindowMesh(UStaticMesh* Mesh) const;
+	bool IsWindowFrameMesh(UStaticMesh* Mesh) const;
 };
