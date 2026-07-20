@@ -188,7 +188,14 @@ public:
 	void OnInteract();
 
 	UFUNCTION()
+	void UpdateInteractionPrompt();
+
+	ADoor* FindNearbyDoor() const;
+
+	UFUNCTION()
 	void HandleBuildKey();
+
+
 
 
 
@@ -386,5 +393,13 @@ private:
 	void InputAxisLookUp(float Value);
 	void AttackInput();
 	void TellAllAgentsToAttack();
+
+	void CheckIfInsideBuilding();
+
+	bool bPlayerInsideBuilding = false;
+
+	// How far above the player we check for a roof
+	UPROPERTY(EditAnywhere, Category = "Building")
+	float RoofTraceHeight = 1200.f;
 
 };

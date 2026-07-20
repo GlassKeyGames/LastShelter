@@ -165,6 +165,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Build")
 	bool IsBuildModeActive() const { return IsBuildModeOn; }
 
+	FText GetCurrentBuildName() const { return CurrentBuildName; }
+
 
 	// Sound played when a structure is successfully placed
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Build|Sound")

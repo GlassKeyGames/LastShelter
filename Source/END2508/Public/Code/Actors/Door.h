@@ -10,6 +10,8 @@ class UStaticMeshComponent;
 class USceneComponent;
 class USoundBase;
 class UStaticMesh;
+class UBoxComponent;
+class ABasePlayer;
 
 UCLASS()
 class END2508_API ADoor : public AActor
@@ -33,6 +35,27 @@ protected:
 
 	FRotator ClosedRotation;
 	FRotator OpenRotation;
+
+	UFUNCTION()
+	void OnInteractBoxBeginOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult
+	);
+
+	UFUNCTION()
+	void OnInteractBoxEndOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex
+	);
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Door")
+	class UBoxComponent* InteractBox;
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Door")
@@ -66,4 +89,5 @@ public:
 	bool IsOpen() const { return bIsOpen; }
 
 	UStaticMeshComponent* GetDoorMesh() const { return DoorMesh; }
+
 };

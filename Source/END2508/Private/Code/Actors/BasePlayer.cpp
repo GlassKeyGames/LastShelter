@@ -30,6 +30,8 @@
 
 ABasePlayer::ABasePlayer(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer.SetDefaultSubobjectClass<URegenHealthComponent>(TEXT("HealthComponent")))
 {
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = true;
     // --- Spring Arm ---
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(GetRootComponent());
@@ -391,13 +393,18 @@ void ABasePlayer::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
+    // This should not depend on the HUD existing.
+    CheckIfInsideBuilding();
+
     if (SpringArm && Camera)
     {
         const FVector ArmLoc = SpringArm->GetComponentLocation();
         const FVector CamLoc = Camera->GetComponentLocation();
         const float Dist = FVector::Dist(ArmLoc, CamLoc);
 
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(
+            LogTemp,
+            Warning,
             TEXT("[CAM] ArmLen=%.1f Dist=%.1f ArmRel=%s SockOff=%s TgtOff=%s CamRel=%s"),
             SpringArm->TargetArmLength,
             Dist,
@@ -406,23 +413,49 @@ void ABasePlayer::Tick(float DeltaTime)
             *SpringArm->TargetOffset.ToString(),
             *Camera->GetRelativeLocation().ToString()
         );
-    } 
-
+    }
 
     APlayerController* PC = Cast<APlayerController>(GetController());
-    if (!PC || !HUDWidget) return;
+
+    if (!PC)
+    {
+        return;
+    }
+
+    if (HUDWidget)
+    {
+        UpdateInteractionPrompt();
+    }
+
+    if (ADoor* Door = FindNearbyDoor())
+    {
+        UE_LOG(
+            LogTemp,
+            Warning,
+            TEXT("[TICK DOOR FOUND] %s IsOpen=%d"),
+            *Door->GetName(),
+            Door->IsOpen() ? 1 : 0
+        );
+    }
 
     FVector Start;
     FRotator Rotation;
     PC->GetPlayerViewPoint(Start, Rotation);
 
-    FVector End = Start + Rotation.Vector() * 5000.f;
+    const FVector End = Start + Rotation.Vector() * 5000.f;
 
     FHitResult Hit;
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(this); // Don't hit self
 
-    bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    const bool bHit = GetWorld()->LineTraceSingleByChannel(
+        Hit,
+        Start,
+        End,
+        ECC_Visibility,
+        Params
+    );
 
     bool bShouldHighlight = false;
 
@@ -430,26 +463,21 @@ void ABasePlayer::Tick(float DeltaTime)
     {
         AActor* HitActor = Hit.GetActor();
 
-        UE_LOG(LogTemp, Warning, TEXT("Hit actor: %s | HasEnemyTag=%d"),
+        UE_LOG(
+            LogTemp,
+            Warning,
+            TEXT("Hit actor: %s | HasEnemyTag=%d"),
             *HitActor->GetName(),
-            HitActor->ActorHasTag("Enemy") ? 1 : 0);
+            HitActor->ActorHasTag(TEXT("Enemy")) ? 1 : 0
+        );
 
-        bShouldHighlight = HitActor->ActorHasTag("Enemy");
+        bShouldHighlight = HitActor->ActorHasTag(TEXT("Enemy"));
     }
 
-   
-    bool bInBuildOrDestroy = false;
-    if (BuildComponent)
+    if (HUDWidget)
     {
-        bInBuildOrDestroy =
-            BuildComponent->IsBuildModeActive() ||
-            BuildComponent->IsDestroyModeActive();
+        HUDWidget->SetReticleColor(bShouldHighlight);
     }
-
-    
-
-    HUDWidget->SetReticleColor(bShouldHighlight);
-
 }
 
 
@@ -977,91 +1005,138 @@ void ABasePlayer::PlayerWin()
 
 
 
+void ABasePlayer::UpdateInteractionPrompt()
+{
+    if (!HUDWidget)
+    {
+        return;
+    }
+
+    // Pickup text only
+    if (CurrentPickup && IsValid(CurrentPickup))
+    {
+        HUDWidget->SetInteractTextVisible(
+            true,
+            FText::FromString(TEXT("Press E to Pick Up"))
+        );
+
+        return;
+    }
+
+    // Build text only
+    if (BuildComponent && BuildComponent->IsBuildModeActive())
+    {
+        FText BuildName = BuildComponent->GetCurrentBuildName();
+
+        if (BuildName.IsEmpty())
+        {
+            BuildName = FText::FromString(TEXT("Build"));
+        }
+
+        HUDWidget->SetInteractTextVisible(
+            true,
+            FText::Format(
+                FText::FromString(TEXT("Press E to Build {0}")),
+                BuildName
+            )
+        );
+
+        return;
+    }
+
+    // No pickup/build = hide text
+    HUDWidget->SetInteractTextVisible(false, FText::GetEmpty());
+}
+
+ADoor* ABasePlayer::FindNearbyDoor() const
+{
+    UWorld* World = GetWorld();
+    if (!World)
+    {
+        return nullptr;
+    }
+
+    const FVector PlayerLocation = GetActorLocation();
+
+    // The door actor location does NOT move when the door opens.
+    const float DoorRange = 300.f;
+    const float DoorRangeSq = DoorRange * DoorRange;
+
+    ADoor* ClosestDoor = nullptr;
+    float ClosestDistanceSq = DoorRangeSq;
+
+    for (TActorIterator<ADoor> It(World); It; ++It)
+    {
+        ADoor* Door = *It;
+        if (!IsValid(Door))
+        {
+            continue;
+        }
+
+        FVector DoorLocation = Door->GetActorLocation();
+
+        // Ignore height difference so stairs/floor height do not break it.
+        FVector PlayerFlat = FVector(PlayerLocation.X, PlayerLocation.Y, 0.f);
+        FVector DoorFlat = FVector(DoorLocation.X, DoorLocation.Y, 0.f);
+
+        const float DistanceSq = FVector::DistSquared(PlayerFlat, DoorFlat);
+
+        if (DistanceSq <= ClosestDistanceSq)
+        {
+            ClosestDistanceSq = DistanceSq;
+            ClosestDoor = Door;
+        }
+    }
+
+    return ClosestDoor;
+}
+
+
 
 // INTERACTION
 void ABasePlayer::OnInteract()
 {
-    UE_LOG(LogTemp, Warning, TEXT("OnInteract pressed"));
-
-    ADoor* FoundDoor = nullptr;
-
-    const FVector Start = GetActorLocation() + FVector(0.f, 0.f, 50.f);
-    const FVector Center = Start + GetActorForwardVector() * 150.f;
-    const float Radius = 120.f;
-
-    TArray<FOverlapResult> Overlaps;
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(this);
-
-    FCollisionObjectQueryParams ObjectQueryParams;
-    ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
-
-    const bool bHit = GetWorld()->OverlapMultiByObjectType(
-        Overlaps,
-        Center,
-        FQuat::Identity,
-        ObjectQueryParams,
-        FCollisionShape::MakeSphere(Radius),
-        Params
-    );
-
-    if (bHit)
+    // Destroy mode must be checked first.
+    if (BuildComponent &&
+        BuildComponent->IsDestroyModeActive())
     {
-        for (const FOverlapResult& Result : Overlaps)
-        {
-            AActor* HitActor = nullptr;
+        UE_LOG(
+            LogTemp,
+            Warning,
+            TEXT("Interact: calling DestroyCurrentTarget")
+        );
 
-            if (Result.Component.IsValid())
-            {
-                HitActor = Result.Component->GetOwner();
-            }
-
-            if (HitActor)
-            {
-                UE_LOG(LogTemp, Warning, TEXT("Overlap hit: %s"), *HitActor->GetName());
-
-                if (ADoor* Door = Cast<ADoor>(HitActor))
-                {
-                    FoundDoor = Door;
-                    break;
-                }
-            }
-        }
-    }
-    else
-    {
-        UE_LOG(LogTemp, Warning, TEXT("No overlap found"));
+        BuildComponent->DestroyCurrentTarget();
+        return;
     }
 
-    if (FoundDoor)
+    // Door still opens/closes, but no HUD text for it
+    if (ADoor* Door = FindNearbyDoor())
     {
-        UE_LOG(LogTemp, Warning, TEXT("Found nearby door: %s"), *FoundDoor->GetName());
+        UE_LOG(LogTemp, Warning, TEXT("Found nearby door: %s"), *Door->GetName());
 
-        FoundDoor->ToggleDoor();
+        Door->ToggleDoor();
 
+        // Hide any text after opening/closing door
         if (HUDWidget)
         {
-            HUDWidget->SetInteractTextVisible(
-                true,
-                FoundDoor->IsOpen()
-                ? FText::FromString(TEXT("Press E to Close"))
-                : FText::FromString(TEXT("Press E to Open"))
-            );
+            HUDWidget->SetInteractTextVisible(false, FText::GetEmpty());
         }
 
         return;
     }
 
-    if (CurrentPickup)
+    if (CurrentPickup && IsValid(CurrentPickup))
     {
         if (CurrentPickup->TryPickup(this))
         {
             CurrentPickup = nullptr;
+            UpdateInteractionPrompt();
             return;
         }
     }
 
-    if (BuildComponent)
+    if (BuildComponent && BuildComponent->IsBuildModeActive())
     {
         if (BuildComponent->IsDestroyModeActive())
         {
@@ -1071,10 +1146,13 @@ void ABasePlayer::OnInteract()
         {
             BuildComponent->PlaceBuildable();
         }
+
+        UpdateInteractionPrompt();
+        return;
     }
+
+    UpdateInteractionPrompt();
 }
-
-
 
 
 
@@ -1442,5 +1520,71 @@ void ABasePlayer::ForceFirstPerson(bool bEnable)
         bUseControllerRotationRoll = false;
 
         GetMesh()->SetOwnerNoSee(false);
+    }
+}
+
+void ABasePlayer::CheckIfInsideBuilding()
+{
+    if (!GetWorld())
+    {
+        return;
+    }
+
+    const FVector Start =
+        GetActorLocation() + FVector(0.f, 0.f, 75.f);
+
+    const FVector End =
+        Start + FVector(0.f, 0.f, RoofTraceHeight);
+
+    FHitResult Hit;
+
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    const bool bHit = GetWorld()->LineTraceSingleByChannel(
+        Hit,
+        Start,
+        End,
+        ECC_Visibility,
+        Params
+    );
+
+    bool bRoofAbove = false;
+
+    if (bHit && IsValid(Hit.GetActor()))
+    {
+        AActor* HitActor = Hit.GetActor();
+
+        bRoofAbove = HitActor->ActorHasTag(TEXT("Roof"));
+
+        UE_LOG(
+            LogTemp,
+            Warning,
+            TEXT("[ROOF CHECK] Hit=%s RoofTag=%d"),
+            *HitActor->GetName(),
+            bRoofAbove ? 1 : 0
+        );
+    }
+    else
+    {
+        UE_LOG(
+            LogTemp,
+            Warning,
+            TEXT("[ROOF CHECK] Nothing hit")
+        );
+    }
+
+    if (bRoofAbove != bPlayerInsideBuilding)
+    {
+        bPlayerInsideBuilding = bRoofAbove;
+
+        UE_LOG(
+            LogTemp,
+            Warning,
+            TEXT("[ROOF CHECK] Switching camera. FirstPerson=%d"),
+            bRoofAbove ? 1 : 0
+        );
+
+        ForceFirstPerson(bRoofAbove);
     }
 }

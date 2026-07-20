@@ -2,6 +2,8 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/BoxComponent.h"
+#include "Code/Actors/BasePlayer.h"
 
 ADoor::ADoor()
 {
@@ -13,18 +15,11 @@ ADoor::ADoor()
     DoorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DoorMesh"));
     DoorMesh->SetupAttachment(Hinge);
 
-    DoorMesh->SetUsingAbsoluteLocation(false);
-    DoorMesh->SetUsingAbsoluteRotation(false);
-    DoorMesh->SetUsingAbsoluteScale(false);
-
     DoorMesh->SetMobility(EComponentMobility::Movable);
     DoorMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     DoorMesh->SetCollisionResponseToAllChannels(ECR_Block);
     DoorMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
-    DoorMesh->SetRelativeLocation(FVector::ZeroVector);
-    DoorMesh->SetRelativeRotation(FRotator::ZeroRotator);
-    DoorMesh->SetRelativeScale3D(FVector(1.f, 1.f, 1.f));
 }
 
 void ADoor::BeginPlay()
@@ -43,20 +38,37 @@ void ADoor::BeginPlay()
     ClosedRotation = ClosedRotationOffset;
     OpenRotation = OpenRotationOffset;
 
-    // Start closed.
     Hinge->SetRelativeRotation(ClosedRotation);
-    DoorMesh->SetRelativeLocation(DoorBaseRelativeLocation + ClosedOnlyRelativeLocationOffset);
 
-    UE_LOG(LogTemp, Warning, TEXT("Door Base: %s | Closed Offset: %s | Open Offset: %s"),
-        *DoorBaseRelativeLocation.ToString(),
-        *ClosedOnlyRelativeLocationOffset.ToString(),
-        *OpenDoorRelativeLocationOffset.ToString());
+    DoorMesh->SetRelativeLocation(
+        DoorBaseRelativeLocation + ClosedOnlyRelativeLocationOffset
+    );
+
+    if (InteractBox)
+    {
+        InteractBox->SetBoxExtent(FVector(300.f, 300.f, 220.f));
+        InteractBox->SetRelativeLocation(FVector(0.f, 0.f, 100.f));
+
+        InteractBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+        InteractBox->SetCollisionObjectType(ECC_WorldDynamic);
+        InteractBox->SetCollisionResponseToAllChannels(ECR_Ignore);
+        InteractBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+        InteractBox->SetGenerateOverlapEvents(true);
+
+        InteractBox->OnComponentBeginOverlap.AddDynamic(
+            this,
+            &ADoor::OnInteractBoxBeginOverlap
+        );
+
+        InteractBox->OnComponentEndOverlap.AddDynamic(
+            this,
+            &ADoor::OnInteractBoxEndOverlap
+        );
+    }
 }
 
 void ADoor::ToggleDoor()
 {
-    UE_LOG(LogTemp, Warning, TEXT("ToggleDoor called on %s"), *GetName());
-
     if (!Hinge || !DoorMesh)
     {
         return;
@@ -66,24 +78,78 @@ void ADoor::ToggleDoor()
 
     if (bIsOpen)
     {
-        // OPEN DOES NOT USE CLOSED OFFSET.
-        DoorMesh->SetRelativeLocation(DoorBaseRelativeLocation + OpenDoorRelativeLocationOffset);
+        DoorMesh->SetRelativeLocation(
+            DoorBaseRelativeLocation + OpenDoorRelativeLocationOffset
+        );
+
         Hinge->SetRelativeRotation(OpenRotation);
 
         if (OpenDoorSound)
         {
-            UGameplayStatics::PlaySoundAtLocation(this, OpenDoorSound, GetActorLocation());
+            UGameplayStatics::PlaySoundAtLocation(
+                this,
+                OpenDoorSound,
+                GetActorLocation()
+            );
         }
     }
     else
     {
-        // CLOSED USES THE CLOSED-ONLY OFFSET.
         Hinge->SetRelativeRotation(ClosedRotation);
-        DoorMesh->SetRelativeLocation(DoorBaseRelativeLocation + ClosedOnlyRelativeLocationOffset);
+
+        DoorMesh->SetRelativeLocation(
+            DoorBaseRelativeLocation + ClosedOnlyRelativeLocationOffset
+        );
 
         if (CloseDoorSound)
         {
-            UGameplayStatics::PlaySoundAtLocation(this, CloseDoorSound, GetActorLocation());
+            UGameplayStatics::PlaySoundAtLocation(
+                this,
+                CloseDoorSound,
+                GetActorLocation()
+            );
         }
     }
+}
+
+void ADoor::OnInteractBoxBeginOverlap(
+    UPrimitiveComponent* OverlappedComponent,
+    AActor* OtherActor,
+    UPrimitiveComponent* OtherComp,
+    int32 OtherBodyIndex,
+    bool bFromSweep,
+    const FHitResult& SweepResult
+)
+{
+    if (!Cast<ABasePlayer>(OtherActor))
+    {
+        return;
+    }
+
+    UE_LOG(
+        LogTemp,
+        Warning,
+        TEXT("[Door] Player entered door range: %s"),
+        *GetName()
+    );
+}
+
+void ADoor::OnInteractBoxEndOverlap(
+    UPrimitiveComponent* OverlappedComponent,
+    AActor* OtherActor,
+    UPrimitiveComponent* OtherComp,
+    int32 OtherBodyIndex
+)
+{
+    if (!Cast<ABasePlayer>(OtherActor))
+    {
+        return;
+    }
+
+    UE_LOG(
+        LogTemp,
+        Warning,
+        TEXT("[Door] Player left door range: %s"),
+        *GetName()
+    );
 }

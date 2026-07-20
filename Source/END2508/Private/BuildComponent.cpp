@@ -185,7 +185,7 @@ void UBuildComponent::PlaceBuildable()
 	}
 
 	// ----- DOOR -----
-	if (IsDoorMesh(MeshToUse) && DoorClass)
+	if (IsDoorMesh(MeshToUse))
 	{
 		TSubclassOf<ADoor> ClassToSpawn = DoorClass;
 
@@ -194,31 +194,27 @@ void UBuildComponent::PlaceBuildable()
 			ClassToSpawn = StoneDoorClass;
 		}
 
-		ADoor* NewDoor = World->SpawnActorDeferred<ADoor>(
-			ClassToSpawn,
-			BuildTransform,
-			GetOwner(),
-			Cast<APawn>(GetOwner()),
-			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
-		);
-
-		if (!NewDoor)
+		if (!ClassToSpawn)
 		{
+			UE_LOG(LogTemp, Error, TEXT("[BuildComponent] DoorClass is NULL. Assign BP_WoodDoor in BP_Player BuildComponent."));
 			return;
 		}
 
-		NewDoor->Tags.Add("Build_Structure");
-		NewDoor->Tags.Add("Build_Door");
+		ADoor* SpawnedDoor = GetWorld()->SpawnActor<ADoor>(
+			ClassToSpawn,
+			BuildTransform.GetLocation(),
+			BuildTransform.GetRotation().Rotator()
+		);
 
-		NewDoor->FinishSpawning(BuildTransform);
-
-		SpendResourcesForCurrentBuild();
-
-		if (PlaceBuildSound)
+		if (!SpawnedDoor)
 		{
-			UGameplayStatics::PlaySoundAtLocation(this, PlaceBuildSound, BuildTransform.GetLocation());
+			UE_LOG(LogTemp, Error, TEXT("[BuildComponent] Failed to spawn ADoor."));
+			return;
 		}
 
+		UE_LOG(LogTemp, Warning, TEXT("[BuildComponent] Spawned ADoor: %s"), *SpawnedDoor->GetName());
+
+		SpendResourcesForCurrentBuild();
 		return;
 	}
 
@@ -242,6 +238,7 @@ void UBuildComponent::PlaceBuildable()
 		NewActor->Tags.Add("Build_Wall");
 		NewActor->Tags.Add("Build_Wall_Square");
 		NewActor->Tags.Add("Build_Ceiling");
+		NewActor->Tags.Add("Roof");
 	}
 	else if (
 		IsWallMesh(MeshToUse) ||
@@ -261,6 +258,7 @@ void UBuildComponent::PlaceBuildable()
 	{
 		NewActor->Tags.Add("Build_Wall");
 		NewActor->Tags.Add("Build_Roof");
+		NewActor->Tags.Add("Roof");
 	}
 
 	// generic tag for anything placeable
@@ -272,6 +270,8 @@ void UBuildComponent::PlaceBuildable()
 	}
 
 	UStaticMeshComponent* SM = NewObject<UStaticMeshComponent>(NewActor);
+
+	NewActor->SetRootComponent(SM);
 	SM->RegisterComponent();
 	SM->SetStaticMesh(MeshToUse);
 	SM->SetMobility(EComponentMobility::Movable);
@@ -282,7 +282,7 @@ void UBuildComponent::PlaceBuildable()
 	SM->SetGenerateOverlapEvents(false);
 	SM->SetSimulatePhysics(false);
 
-	NewActor->SetRootComponent(SM);
+	
 
 	SpendResourcesForCurrentBuild();
 
@@ -313,6 +313,7 @@ void UBuildComponent::PlaceBuildable()
 
 	UE_LOG(LogTemp, Warning, TEXT("Placed build piece: %s"), *MeshToUse->GetName());
 }
+
 bool UBuildComponent::IsWallMesh(UStaticMesh* Mesh) const
 {
 	if (!Mesh)
@@ -349,6 +350,14 @@ void UBuildComponent::SetCurrentBuild(UStaticMesh* NewMesh, const FText& Label, 
 	{
 		BuildPreview->SetStaticMesh(CurrentBuildMesh);
 	}
+
+	if (IsBuildModeOn)
+	{
+		if (ABasePlayer* BP = Cast<ABasePlayer>(PlayerRef))
+		{
+			BP->UpdateInteractionPrompt();
+		}
+	}
 }
 
 void UBuildComponent::StartBuildMode()
@@ -373,15 +382,7 @@ void UBuildComponent::StartBuildMode()
 	// Update HUD text
 	if (ABasePlayer* BP = Cast<ABasePlayer>(PlayerRef))
 	{
-		if (UPlayerHUD* HUD = BP->GetHUDWidget())
-		{
-			const FText LabelToUse =
-				CurrentBuildName.IsEmpty()
-				? FText::FromString(TEXT("Build"))
-				: CurrentBuildName;
-
-			HUD->SetInteractTextVisible(true, LabelToUse);
-		}
+		BP->UpdateInteractionPrompt();
 	}
 }
 
@@ -620,15 +621,15 @@ void UBuildComponent::BuildCycle()
 
 					const FRotator FrameRot = FrameSM->GetComponentRotation();
 
-					if (bPlacingDoor)
-					{
+					//if (bPlacingDoor)
+					//{
 						// Move the DOOR ACTOR ROOT / HINGE to the left side of the door frame.
 						// This is the important part. The root is the hinge.
-						const FVector FrameRight = FrameRot.RotateVector(FVector::RightVector);
+						//const FVector FrameRight = FrameRot.RotateVector(FVector::RightVector);
 
 						// Move left from the center of the frame.
-						Loc -= FrameRight * FrameB.BoxExtent.Y;
-					}
+						//Loc -= FrameRight * FrameB.BoxExtent.Y;
+					//}
 
 					BuildTransform.SetLocation(Loc);
 					BuildTransform.SetRotation(FrameRot.Quaternion());
@@ -1223,15 +1224,28 @@ void UBuildComponent::ExitBuildAndCloseMenu()
 
 void UBuildComponent::DestroyCurrentTarget()
 {
-	if (!bDestroyMode || !DestroyCandidate)
+	if (!bDestroyMode)
 		return;
+
+	// Refresh the target immediately when the player presses destroy.
+	UpdateDestroyTrace();
+
+	if (!DestroyCandidate)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Destroy failed: no valid build targeted"));
+		return;
+	}
 
 	AActor* ToDestroy = DestroyCandidate;
 	DestroyCandidate = nullptr;
 
-	UE_LOG(LogTemp, Warning, TEXT("Destroying build structure: %s"), *ToDestroy->GetName());
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("Destroying build structure: %s"),
+		*ToDestroy->GetName()
+	);
 
-	// PLAY DESTROY SOUND
 	if (DestroysBuildSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(
@@ -1243,7 +1257,6 @@ void UBuildComponent::DestroyCurrentTarget()
 
 	ToDestroy->Destroy();
 
-	// Clear HUD text
 	if (ABasePlayer* BP = Cast<ABasePlayer>(PlayerRef))
 	{
 		if (UPlayerHUD* HUD = BP->GetHUDWidget())
@@ -1252,7 +1265,6 @@ void UBuildComponent::DestroyCurrentTarget()
 		}
 	}
 
-	// Optional: stay in destroy mode OR exit after one destroy
 	bDestroyMode = false;
 }
 
@@ -1261,7 +1273,7 @@ void UBuildComponent::StartDestroyMode()
 	if (!PlayerRef)
 		return;
 
-	// Turn OFF build mode + preview if active
+	// Turn off build mode and remove preview.
 	if (IsBuildModeOn)
 	{
 		PlayerRef->GetWorldTimerManager().ClearTimer(BuildCycleHandle);
@@ -1276,19 +1288,40 @@ void UBuildComponent::StartDestroyMode()
 		DoOnce = true;
 	}
 
-	bDestroyMode = true;
-	DestroyCandidate = nullptr;
+	// Close the build menu.
+	if (ActiveMenu)
+	{
+		ActiveMenu->RemoveFromParent();
+		ActiveMenu = nullptr;
+	}
 
-	// Clear HUD text initially
+	// Return input control to the player.
 	if (ABasePlayer* BP = Cast<ABasePlayer>(PlayerRef))
 	{
+		if (APlayerController* PC =
+			Cast<APlayerController>(BP->GetController()))
+		{
+			PC->SetInputMode(FInputModeGameOnly());
+			PC->bShowMouseCursor = false;
+		}
+
 		if (UPlayerHUD* HUD = BP->GetHUDWidget())
 		{
-			HUD->SetInteractTextVisible(false, FText::GetEmpty());
+			HUD->SetInteractTextVisible(
+				false,
+				FText::GetEmpty()
+			);
 		}
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("BuildComponent: Destroy mode STARTED"));
+	bDestroyMode = true;
+	DestroyCandidate = nullptr;
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("BuildComponent: Destroy mode STARTED")
+	);
 }
 
 
